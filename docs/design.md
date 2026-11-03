@@ -1,95 +1,94 @@
-# Design — Lab 4: Predicting House Prices theo 5W1H
+# Thiết kế bài thực hành dự đoán giá nhà theo 5W1H
 
-## 1. Căn cứ và đối chiếu yêu cầu đề
+## 1. Yêu cầu của bài thực hành
 
-Nguồn yêu cầu:
+Tài liệu dựa trên [Practice exercise 4.pdf](<Practice exercise 4.pdf>). Bài thực hành yêu cầu xây dựng MLP để dự đoán giá nhà, sau đó so sánh với Linear Regression, Decision Tree và Random Forest. Dữ liệu đầu vào nằm trong `data/raw/housing.csv`.
 
-- [Practice exercise 4.pdf](<Practice exercise 4.pdf>): đề gốc, hai trang, Tasks 1–6.
-- Dữ liệu đầu vào: `data/raw/housing.csv`; các thống kê dữ liệu được kiểm tra trực tiếp từ CSV.
+| Phần trong đề | Yêu cầu | Cách thực hiện |
+| --- | --- | --- |
+| Task 1 | Import các thư viện cần thiết | Khai báo thư viện trong `requirements.txt`; viết các hàm dùng chung trong `src/` |
+| Task 2 | Chuẩn bị dữ liệu, tách X/y và chuẩn hóa | Chia dữ liệu trước, sau đó điền giá trị thiếu, mã hóa biến phân loại và chuẩn hóa biến số |
+| Task 3 | Xây dựng mạng Sequential với các lớp Dense | Dùng kiến trúc `32 ReLU → 16 ReLU → 1 linear`, Adam và MSE loss |
+| Task 4 | Huấn luyện và theo dõi MSE, MAE | Chạy 100 epochs với batch size 32; theo dõi train và validation |
+| Task 5 | Đánh giá và so sánh giá thực tế với dự đoán | Tính chỉ số trên test, vẽ biểu đồ và phân tích sai số |
+| Task 6 | So sánh MLP với ba mô hình regression | Huấn luyện baseline trước MLP và đánh giá cả bốn mô hình trên cùng test |
 
-| Yêu cầu | Nội dung đề                                                              | Thiết kế dự án / bằng chứng cần bàn giao                                                                        |
-| --------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Task 1    | Import thư viện phục vụ dữ liệu, scaling, MLP và biểu đồ          | Khai báo dependency trong `requirements.txt`; notebook gọi logic dùng chung trong `src/`                         |
-| Task 2    | Boston Housing; tách X/y, StandardScaler, train/test                       | California CSV local; split trước preprocessing; bổ sung imputation và categorical encoding phù hợp schema        |
-| Task 3    | Sequential, Dense, ReLU hidden, linear output, Adam và MSE                 | MLP `32 ReLU → 16 ReLU → 1 linear`; `input_dim` lấy từ dữ liệu sau transform                                  |
-| Task 4    | Train, theo dõi MSE và MAE                                                | 100 epochs, batch size 32; history gồm loss/val_loss/mae/val_mae; validation riêng                                    |
-| Task 5    | Evaluate test; dự đoán và so sánh actual/predicted                     | Metrics trên test, scatter plot, phân tích residuals và demo suy luận                                              |
-| Task 6    | Linear Regression, Decision Tree, Random Forest; MSE/R²; so sánh với MLP | Ba baseline chạy trước MLP, dùng cùng split/preprocessor; bảng bốn mô hình và nhận xét dựa kết quả thật |
+### Những điểm điều chỉnh so với đề
 
-### Khác biệt cần ghi rõ khi báo cáo
+Đề sử dụng Boston Housing và minh họa cách chia train/test theo tỷ lệ 80/20. Thiết kế này chọn California Housing và chia train/validation/test theo tỷ lệ 80/10/10. Tập validation riêng giúp theo dõi quá trình huấn luyện mà vẫn giữ test cho lần đánh giá cuối.
 
-| Nội dung           | PDF                                                                                       | Quyết định thiết kế                                                           |
-| ------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Dataset             | Phần giới thiệu nêu Boston như ví dụ; Task 2 và code mẫu dùng Boston            | `data/raw/housing.csv`, California Housing; không tự tải hoặc đổi dataset  |
-| Split               | Code mẫu train/test 80/20, seed 42                                                       | Train/validation/test 80/10/10, seed 42                                            |
-| Validation          | Code mẫu dùng test làm validation                                                      | Validation độc lập; test dành cho đánh giá cuối                            |
-| Metrics             | MSE/MAE trong phần yêu cầu, MSE/R² trong Task 6; code compile chỉ khai báo MSE loss | MSE, RMSE, MAE, R²; khai báo MAE khi compile                                     |
-| Learning rate       | Code mẫu chỉ ghi optimizer Adam                                                         | `0.001` theo cấu hình dự án, không phải con số ghi tường minh trong PDF |
-| Cấu hình baseline | PDF không ấn định depth hoặc số cây                                                | Decision Tree `max_depth=5`, Random Forest `n_estimators=100`                  |
+| Nội dung | Trong đề | Lựa chọn thiết kế |
+| --- | --- | --- |
+| Dữ liệu | Boston Housing | California Housing từ CSV trên máy |
+| Chia tập | Train/test 80/20, seed 42 | Train/validation/test 80/10/10, seed 42 |
+| Validation | Ví dụ dùng test làm validation | Dùng tập validation riêng |
+| Chỉ số | MSE, MAE; Task 6 có thêm R² | MSE, MAE, R² và RMSE để diễn giải sai số theo USD |
+| Learning rate | Chỉ nêu Adam | Chọn `0.001` |
+| Baseline | Không quy định độ sâu hoặc số cây | Decision Tree dùng `max_depth=5`; Random Forest dùng `n_estimators=100` |
 
-California và tỷ lệ 8:1:1 là quyết định thiết kế đã được người dùng duyệt, không trình bày như yêu cầu nguyên văn của đề. Design không tự đặt ngưỡng MAE/R² để nghiệm thu vì đề chưa quy định ngưỡng đó.
+Báo cáo cần giải thích các điều chỉnh này. Đề không quy định mức MAE hoặc R² phải đạt, nên kết luận cần dựa trên kết quả thực nghiệm và so sánh giữa các mô hình.
 
-## 2. What — Xây dựng cái gì?
+## 2. What — Bài toán cần giải quyết là gì?
 
-Xây dựng pipeline supervised learning cho bài toán **regression**, dự đoán `median_house_value` từ chín đặc trưng California Housing. Target là giá trị nhà trung vị của khu vực theo USD, không phải giá giao dịch của một căn nhà riêng lẻ.
+Bài toán là dự đoán `median_house_value` từ chín đặc trưng của California Housing. Đây là bài toán **regression**, có đầu ra là một giá trị liên tục theo USD. Target biểu thị giá nhà trung vị của một khu vực, không phải giá giao dịch của từng căn nhà.
 
-### Đầu vào
+### Dữ liệu đầu vào
 
-| Nhóm               | Các cột                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Numeric, 8 cột     | `longitude`, `latitude`, `housing_median_age`, `total_rooms`, `total_bedrooms`, `population`, `households`, `median_income` |
-| Categorical, 1 cột | `ocean_proximity`                                                                                                                         |
-| Target              | `median_house_value`                                                                                                                      |
+| Loại dữ liệu | Các cột |
+| --- | --- |
+| Tám biến số | `longitude`, `latitude`, `housing_median_age`, `total_rooms`, `total_bedrooms`, `population`, `households`, `median_income` |
+| Một biến phân loại | `ocean_proximity` |
+| Giá trị cần dự đoán | `median_house_value` |
 
-Thống kê kiểm tra trực tiếp từ `data/raw/housing.csv`: CSV có 20.640 hàng; `total_bedrooms` thiếu 207 giá trị; `ocean_proximity` có 5 nhóm; 965 hàng có target ở mức lớn nhất 500001 USD; nhóm `ISLAND` có 5 hàng. Kiểm tra lại các thống kê khi tiếp nhận dữ liệu.
+Kiểm tra trực tiếp CSV cho thấy dữ liệu có 20.640 dòng. Cột `total_bedrooms` thiếu 207 giá trị; `ocean_proximity` có năm nhóm, trong đó `ISLAND` chỉ có năm dòng. Target lớn nhất là 500001 USD, xuất hiện ở 965 dòng. Cần xem xét các đặc điểm này khi tiền xử lý và phân tích sai số; nếu thay CSV thì kiểm tra lại thống kê.
 
-### Đầu ra
+### Kết quả cần có
 
-- Ba raw split CSV: train, validation, test, mỗi file có target.
-- Fitted preprocessor, ba baseline đã fit và MLP đã train.
-- Bảng MSE/RMSE/MAE/R² của bốn mô hình trên cùng test.
-- Learning curves, actual-vs-predicted và biểu đồ so sánh mô hình.
-- Notebook diễn giải quy trình, kết quả thực nghiệm và giới hạn; demo ba mẫu test qua chuỗi preprocessing → predict.
+- Ba file CSV chứa train, validation và test, bao gồm cả target.
+- Bộ tiền xử lý đã fit trên train, ba baseline và MLP đã huấn luyện.
+- Bảng MSE, RMSE, MAE và R² của bốn mô hình trên cùng test.
+- Biểu đồ quá trình học, giá thực tế so với dự đoán và so sánh mô hình.
+- Notebook giải thích cách làm, nhận xét kết quả và minh họa dự đoán với ba mẫu test.
 
-Phần cốt lõi giữ target nguyên USD, feature engineering tắt mặc định. Triển khai web/API, cloud serving, stacking và các boosting frameworks không thuộc phạm vi bài này.
+Target được giữ nguyên đơn vị USD. Feature engineering là phần mở rộng, chưa dùng trong quy trình chính. Phạm vi bài tập tập trung vào dữ liệu, mô hình và đánh giá; không bao gồm xây dựng web/API, triển khai lên cloud, stacking hoặc bổ sung các thư viện boosting.
 
-## 3. Why — Vì sao thiết kế như vậy?
+## 3. Why — Vì sao chọn cách làm này?
 
-Mục tiêu học tập là hiểu đầy đủ luồng dữ liệu → mô hình → đánh giá, kiểm chứng MLP bằng các mô hình regression đối chứng và giải thích kết quả. MLP là nội dung bắt buộc của bài, không có giả định rằng MLP sẽ vượt baseline.
+Mục tiêu là hiểu cách chuẩn bị dữ liệu, xây dựng MLP và đánh giá mô hình regression. Các baseline cung cấp kết quả tham chiếu để xem MLP có mang lại cải thiện hay không.
 
-| Quyết định                        | Lý do                                                                            | Trade-off                                                                       |
-| ------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Linear Regression chạy đầu tiên  | Mô hình dễ giải thích, kiểm nhanh toàn tuyến dữ liệu/metrics            | Có thể bỏ sót quan hệ phi tuyến                                           |
-| Validation riêng                    | Chọn cấu hình mà vẫn giữ test độc lập                                    | Train dùng 80%, test còn 10%; kết quả phụ thuộc split                     |
-| Fit preprocessing chỉ trên train   | Ngăn thông tin validation/test đi vào thống kê học                         | Phải xử lý category chưa thấy và kiểm schema khi suy luận               |
-| Một preprocessor cho bốn mô hình | So sánh trên cùng đầu vào và giảm khác biệt pipeline                    | Scaling không cần thiết cho tree nhưng vẫn được dùng để thống nhất |
-| Giữ target USD                      | Diễn giải MAE/RMSE trực tiếp, tránh nhầm đơn vị                          | MLP có thể hội tụ chậm; chỉ đánh giá được qua thực nghiệm         |
-| Phân chia module theo trách nhiệm | Tách xử lý dữ liệu, mô hình và đánh giá; notebooks tái sử dụng code | Phải giữ nhất quán hợp đồng giữa notebook và CLI                       |
+| Lựa chọn | Lý do | Điểm cần lưu ý |
+| --- | --- | --- |
+| Bắt đầu bằng Linear Regression | Dễ giải thích, chạy nhanh và giúp kiểm tra toàn bộ quy trình | Có thể chưa học được quan hệ phi tuyến |
+| Tách validation khỏi test | Chọn cấu hình mà vẫn giữ test độc lập | Kết quả phụ thuộc vào cách chia; test chỉ chiếm 10% dữ liệu |
+| Chỉ fit tiền xử lý trên train | Tránh để thông tin validation/test ảnh hưởng đến mô hình | Cần xử lý nhóm phân loại chưa gặp trong train |
+| Dùng chung bộ tiền xử lý | Giúp bốn mô hình nhận cùng đầu vào | Mô hình cây không cần scaling nhưng vẫn dùng để thống nhất quy trình |
+| Giữ target theo USD | MAE và RMSE dễ diễn giải | Thang target lớn có thể khiến MLP hội tụ chậm |
+| Chia code thành module | Dễ phân công, kiểm thử và dùng lại trong notebook | Notebook và chương trình chính phải thống nhất đầu vào, đầu ra |
 
-Nếu baseline tốt hơn, báo cáo đúng kết quả và phân tích nguyên nhân. Thay đổi target transform, kiến trúc hoặc thêm feature engineering là thí nghiệm riêng sau baseline, cần kế hoạch validation và phê duyệt trước khi mở rộng scope.
+Nếu baseline tốt hơn MLP, báo cáo cần nêu kết quả và phân tích nguyên nhân. Các thử nghiệm biến đổi target, đổi kiến trúc hoặc tạo thêm đặc trưng cần có kế hoạch đánh giá trên validation và được thống nhất trước khi mở rộng phạm vi.
 
-## 4. Who — Phục vụ ai, ai phụ trách?
+## 4. Who — Ai sử dụng và ai thực hiện?
 
-Người sử dụng trực tiếp là nhóm sinh viên triển khai và giảng viên đọc notebook, code, kết quả để đánh giá bài thực hành.
+Tài liệu phục vụ nhóm sinh viên làm bài và giảng viên đánh giá kết quả. Công việc được chia theo vai trò để các phần có thể ghép lại thành một quy trình thống nhất.
 
-| Vai trò triển khai | Trách nhiệm                                                                         | Bàn giao                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Nhóm dữ liệu      | Config, local loader, split, preprocessing; feature engineering optional; notebook 01 | Raw splits, fitted preprocessor và kiểm chứng dữ liệu                              |
-| Nhóm mô hình      | Baselines, MLP, persistence; notebook 02                                              | Models cùng preprocessor tương ứng, history và kiểm chứng save/load              |
-| Nhóm đánh giá    | Metrics, visualization, logging, orchestration; notebook 03                           | Bảng so sánh, biểu đồ, phân tích kết quả và demo                              |
-| Cả nhóm            | Tích hợp và `tests/test_pipeline.py`                                             | Chuỗi từ raw input tới dự đoán nhất quán, tài liệu phản ánh kết quả thật |
+| Vai trò | Công việc | Kết quả bàn giao |
+| --- | --- | --- |
+| Nhóm dữ liệu | Quản lý cấu hình, đọc CSV, chia tập, tiền xử lý và viết notebook 01; thử thêm đặc trưng khi cần | Các tập dữ liệu, bộ tiền xử lý và kết quả kiểm tra |
+| Nhóm mô hình | Huấn luyện baseline, MLP, lưu/nạp mô hình và viết notebook 02 | Mô hình, bộ tiền xử lý tương ứng và lịch sử huấn luyện |
+| Nhóm đánh giá | Tính chỉ số, vẽ biểu đồ, ghi log, điều phối chương trình và viết notebook 03 | Bảng so sánh, biểu đồ, nhận xét và ví dụ dự đoán |
+| Cả nhóm | Ghép các phần và kiểm thử trong `tests/test_pipeline.py` | Quy trình chạy đầy đủ từ dữ liệu đầu vào đến dự đoán |
 
-Notebook dùng hàm trong `src/`, tránh tạo implementation thứ hai. Người nhận artifact phải biết artifact đó thuộc cùng lần chia dữ liệu và huấn luyện nào; không ghép model với preprocessor từ lần chạy khác.
+Notebook gọi các hàm trong `src/` để dùng chung cách xử lý. Mô hình cần đi kèm đúng bộ tiền xử lý của lần huấn luyện đó; dùng nhầm bộ tiền xử lý có thể làm sai dự đoán dù số cột vẫn khớp.
 
-## 5. Where — Chạy ở đâu, dữ liệu nằm ở đâu?
+## 5. Where — Chương trình chạy ở đâu và dữ liệu được lưu thế nào?
 
-Pipeline chạy local bằng Python. Hai cách sử dụng dự kiến là `main.py` điều phối toàn tuyến và notebooks chạy theo thứ tự 01 → 02 → 03. Dataset duy nhất là `data/raw/housing.csv`; loader phải báo lỗi khi thiếu file hoặc schema sai.
+Chương trình chạy trên máy bằng Python. Có thể chạy toàn bộ quy trình qua `main.py` hoặc chạy các notebook theo thứ tự 01 → 02 → 03. Dữ liệu được đọc từ `data/raw/housing.csv`; chương trình cần báo lỗi nếu thiếu file hoặc các cột không đúng yêu cầu.
 
-`src/config.py` quản lý đường dẫn từ root dự án. Chỉ entrypoint tạo thư mục output khi chạy pipeline; import config không tự ghi đĩa. Môi trường phát triển cần hỗ trợ notebook và kiểm thử; thống nhất dependency và phiên bản trước khi triển khai.
+`src/config.py` quản lý đường dẫn tính từ thư mục gốc. Các thư mục kết quả được tạo khi chạy chương trình, không tạo chỉ vì import config. Trước khi triển khai, cần thống nhất thư viện và phiên bản cho code, notebook và kiểm thử.
 
-### Target structure
+### Cấu trúc thư mục dự kiến (target structure)
 
-Cấu trúc thư mục được tổ chức theo trách nhiệm từng module. Dấu `[generated]` chỉ artifact được sinh khi chạy pipeline.
+Mỗi thư mục phụ trách một phần công việc. Các mục có dấu `[generated]` là file hoặc kết quả được sinh khi chạy chương trình.
 
 ```text
 Lab_4 Predicting House Prices/
@@ -152,149 +151,152 @@ Lab_4 Predicting House Prices/
     └── training.log                    # [generated] Nhật ký chạy và thông tin lỗi
 ```
 
-Hướng phụ thuộc: `main.py`/notebooks gọi các module dữ liệu, model và evaluation; các module dùng config chung. Loader không huấn luyện model; evaluation không fit preprocessing; persistence không tự thay đổi split.
+`main.py` và các notebook gọi các module xử lý dữ liệu, huấn luyện và đánh giá. Các module dùng chung cấu hình, nhưng mỗi module chỉ thực hiện phần việc của mình: đọc dữ liệu, huấn luyện, đánh giá hoặc lưu kết quả.
 
-## 6. When — Triển khai theo thứ tự nào?
+## 6. When — Các bước được thực hiện theo thứ tự nào?
 
-Triển khai theo các giai đoạn dưới đây, với điều kiện hoàn thành trước khi chuyển bước.
+Mỗi giai đoạn cần đạt điều kiện trong bảng trước khi chuyển sang bước tiếp theo.
 
-| Bước | Công việc                                                   | Điều kiện chuyển bước                                             |
-| ------ | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 1      | Chốt schema, metrics, môi trường và hợp đồng artifact | Các nhóm thống nhất đầu vào/đầu ra và cách chạy             |
-| 2      | Loader, raw split 80/10/10, EDA train                         | Schema hợp lệ, X/y thẳng hàng, split tái lập và không giao nhau |
-| 3      | Fit/transform preprocessing, lưu raw splits và preprocessor | Chỉ học train; NaN/category mới/thứ tự cột được kiểm          |
-| 4      | Linear Regression → Decision Tree → Random Forest           | Baselines fit/predict đúng shape trên cùng dữ liệu                |
-| 5      | MLP theo cấu hình đề và validation riêng                | Có history thật, dự đoán hữu hạn, kiểm tra overfitting          |
-| 6      | Persistence và chốt cấu hình bằng validation             | Save/load toàn chuỗi cho dự đoán nhất quán                       |
-| 7      | Đánh giá test cuối cùng và phân tích                  | Bảng bốn model, plots, nhận xét từ kết quả thực tế             |
-| 8      | Hoàn thiện notebooks và báo cáo                          | Chạy tuần tự, nêu rõ khác biệt với PDF và giới hạn           |
+| Bước | Công việc | Điều kiện hoàn thành |
+| --- | --- | --- |
+| 1 | Thống nhất dữ liệu, chỉ số đánh giá, môi trường và file kết quả | Các nhóm hiểu rõ đầu vào, đầu ra và cách chạy |
+| 2 | Đọc dữ liệu, chia 80/10/10 và khám phá train | Đúng cột, X/y khớp từng dòng, không trùng mẫu giữa các tập và chia lại được với cùng seed |
+| 3 | Tiền xử lý và lưu dữ liệu | Chỉ fit trên train; xử lý được giá trị thiếu, nhóm mới và thứ tự cột |
+| 4 | Huấn luyện Linear Regression, Decision Tree và Random Forest | Cả ba mô hình trả dự đoán đúng kích thước |
+| 5 | Huấn luyện MLP với validation riêng | Có lịch sử huấn luyện, kiểm tra overfitting và dự đoán không chứa NaN hoặc vô cực |
+| 6 | Chọn cấu hình bằng validation, lưu và nạp lại mô hình | Kết quả trước và sau khi lưu khớp nhau trong sai số cho phép |
+| 7 | Đánh giá trên test | Có bảng so sánh bốn mô hình, biểu đồ và nhận xét |
+| 8 | Hoàn thiện notebook và báo cáo | Chạy được theo thứ tự, giải thích lựa chọn thiết kế và giới hạn kết quả |
 
-Tên notebook 03 có chữ baseline nhưng việc huấn luyện baseline diễn ra trước MLP trong notebook 02; notebook 03 nạp models để đánh giá cuối.
+Baseline được huấn luyện trước MLP trong notebook 02. Notebook 03 nạp mô hình để đánh giá và so sánh trên test.
 
 ## 7. How — Xử lý dữ liệu, huấn luyện và đánh giá mô hình như thế nào?
 
-### 7.1. Luồng tổng thể
+### 7.1. Quy trình chung
 
 ```mermaid
 flowchart TD
-    A[CSV local và kiểm schema] --> B[Tách X/y và split 80/10/10]
-    B --> C[EDA trên train]
-    B --> D[Fit preprocessor chỉ trên train]
-    D --> E[Transform train, validation, test]
-    E --> F[Huấn luyện ba baseline trên train]
-    F --> G[Huấn luyện MLP trên train, theo dõi validation]
-    G --> H[Chốt cấu hình bằng validation]
-    H --> I[Đánh giá bốn model trên cùng test]
-    I --> J[Metrics, plots, báo cáo và demo]
-    D --> K[Lưu fitted preprocessor]
-    H --> L[Lưu models cùng lần chạy]
-    K --> M[Raw input → transform → predict]
+    A[Đọc CSV và kiểm tra các cột] --> B[Tách X/y và chia 80/10/10]
+    B --> C[Khám phá dữ liệu train]
+    B --> D[Fit bộ tiền xử lý trên train]
+    D --> E[Biến đổi train, validation và test]
+    E --> F[Huấn luyện ba baseline]
+    F --> G[Huấn luyện MLP và theo dõi validation]
+    G --> H[Chọn cấu hình bằng validation]
+    H --> I[Đánh giá bốn mô hình trên test]
+    I --> J[Lập bảng kết quả, vẽ biểu đồ và báo cáo]
+    D --> K[Lưu bộ tiền xử lý]
+    H --> L[Lưu mô hình]
+    K --> M[Tiền xử lý dữ liệu đầu vào rồi dự đoán]
     L --> M
 ```
 
-Transform test bằng thống kê train không phải fit; không dùng kết quả test để chọn feature, thay hyperparameter hoặc quyết định dừng train.
+Validation và test được biến đổi bằng bộ tiền xử lý đã fit trên train. Kết quả test chỉ dùng để đánh giá cuối, không dùng để chọn đặc trưng, điều chỉnh tham số hoặc quyết định dừng huấn luyện.
 
-### 7.2. Dữ liệu và preprocessing
+### 7.2. Chuẩn bị và xử lý dữ liệu
 
-| Hàm / đối tượng                    | Input                            | Output và điều kiện                                                                  |
-| --------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `load_housing_data(filepath=None)`    | CSV local theo schema            | `(df, target_col)`; giữ missing features; target phải hợp lệ, không impute target |
-| `split_data_8_1_1(X, y, ...)`         | DataFrame/Series thô            | `X_train, X_val, X_test, y_train, y_val, y_test`; giữ index và alignment             |
-| `fit_preprocessor(X_train)`           | Chín raw feature, không target | Fitted `ColumnTransformer`; reject cột train thiếu hoàn toàn                       |
-| `transform_features(preprocessor, X)` | Raw features đúng schema       | Dense ndarray `(N, D)` hữu hạn; giữ số dòng; không refit                         |
-| `save_processed_splits(...)`          | Sáu tập thô                   | Ba CSV có feature thô + target, giữ NaN, `index=False`                              |
+| Hàm | Đầu vào | Kết quả và yêu cầu |
+| --- | --- | --- |
+| `load_housing_data(filepath=None)` | CSV có các cột theo yêu cầu | Trả `(df, target_col)`; giữ giá trị thiếu ở đặc trưng để xử lý sau, báo lỗi nếu target không hợp lệ |
+| `split_data_8_1_1(X, y, ...)` | DataFrame X và Series y chưa xử lý | Trả `X_train, X_val, X_test, y_train, y_val, y_test`; giữ index để đối chiếu từng mẫu |
+| `fit_preprocessor(X_train)` | Chín đặc trưng của train, không có target | Trả `ColumnTransformer` đã fit; báo lỗi nếu một cột train thiếu toàn bộ giá trị |
+| `transform_features(preprocessor, X)` | Dữ liệu có đủ các cột đặc trưng | Trả dense ndarray `(N, D)`, giữ số dòng, không chứa NaN hoặc vô cực và không fit lại |
+| `save_processed_splits(...)` | Sáu tập X/y chưa tiền xử lý | Lưu ba CSV gồm đặc trưng và target, giữ NaN, dùng `index=False` |
 
-Split dùng seed 42: train/temp 80/20 rồi chia temp thành validation/test 50/50. Với 20.640 mẫu đầu vào, số hàng dự kiến là 16.512/2.064/2.064. Nếu bật stratify, dùng `qcut` theo phân vị target, `duplicates='drop'`, kiểm số mẫu mỗi bin và tính khả thi trước split. Không khả thi phải báo lỗi để chọn giảm bins hoặc `stratify=False`, không fallback ngầm. Kiểm ba tập không giao nhau trước khi bỏ index lúc ghi CSV.
+Dữ liệu được chia thành train 80% và tập tạm 20%, rồi chia đôi tập tạm thành validation và test. Cả hai lần dùng seed 42. Với 20.640 mẫu, số dòng tương ứng là 16.512, 2.064 và 2.064.
 
-Preprocessor có hai nhánh:
+Nếu chia phân tầng theo giá nhà, dùng `qcut` để nhóm target theo phân vị và `duplicates='drop'` để xử lý ranh giới trùng nhau. Kiểm tra số mẫu của mỗi nhóm trước khi chia. Nếu không thể chia, chương trình báo lỗi và hướng dẫn giảm số nhóm hoặc chọn `stratify=False`, thay vì tự đổi cách chia. Kiểm tra các tập không trùng mẫu trước khi bỏ index để lưu CSV.
 
-- Numeric: `SimpleImputer(strategy='median') → StandardScaler`.
-- Categorical: `SimpleImputer(strategy='most_frequent') → OneHotEncoder(handle_unknown='ignore', sparse_output=False, drop=None)`.
+Bộ tiền xử lý gồm hai nhánh:
 
-Chọn cột theo tên và thứ tự trong config. Raw input được phép đảo thứ tự cột nhưng thiếu/dư cột phải báo lỗi. Category chưa thấy trở thành vector toàn 0 trong nhánh one-hot, không làm đổi `D`. Không dùng `get_dummies` độc lập cho từng tập. Numeric không hằng sau scaling có std xấp xỉ 1; không áp điều kiện này cho cột hằng hoặc one-hot.
+- Biến số: `SimpleImputer(strategy='median') → StandardScaler`.
+- Biến phân loại: `SimpleImputer(strategy='most_frequent') → OneHotEncoder(handle_unknown='ignore', sparse_output=False, drop=None)`.
 
-EDA phục vụ chọn feature dùng train sau split. Nếu bật `HousingFeatureEngineer` trong thí nghiệm sau, phải đưa vào preprocessing artifact chung, kiểm chia cho 0/miền log và dùng validation để đánh giá; không học thống kê từ test.
+Các cột được chọn theo tên và thứ tự trong config. Đầu vào có thể đổi thứ tự cột, nhưng thiếu hoặc thừa cột thì cần báo lỗi. Nhóm phân loại chưa gặp trong train được mã hóa thành vector toàn 0 ở nhánh one-hot, nên số chiều đầu ra không đổi. Không dùng `get_dummies` riêng cho từng tập vì có thể tạo ra các cột khác nhau.
 
-### 7.3. Models và lý do lựa chọn
+Sau scaling, biến số không hằng có độ lệch chuẩn xấp xỉ 1. Điều này không áp dụng cho cột hằng hoặc one-hot. Việc khám phá dữ liệu để chọn đặc trưng chỉ dùng train. Nếu bổ sung `HousingFeatureEngineer`, cần lưu chung với bộ tiền xử lý, kiểm tra phép chia cho 0 và miền xác định của log, rồi đánh giá bằng validation.
 
-| Model                   | Cấu hình cốt lõi                    | Khả năng / giới hạn cần đánh giá                                                                                                                             |
-| ----------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Linear Regression       | `fit_intercept=True`                  | Dễ giải thích; có thể underfit phi tuyến. One-hot đầy đủ cùng intercept có thể làm hệ số không duy nhất, cần thận trọng khi diễn giải hệ số |
-| Decision Tree Regressor | `max_depth=5`, seed 42                | Học ngưỡng và tương tác; cây nông có thể underfit, cây sâu có thể overfit                                                                             |
-| Random Forest Regressor | `n_estimators=100`, seed 42           | Tổng hợp cây, học phi tuyến; tốn tài nguyên hơn, khó giải thích trực tiếp hơn một cây                                                               |
-| MLP Keras               | `D → 32 ReLU → 16 ReLU → 1 linear` | Học quan hệ phi tuyến; nhạy scaling, initialization, thang target và overfitting                                                                                |
+### 7.3. Huấn luyện các mô hình
 
-MLP dùng Adam learning rate 0.001, MSE loss, MAE metric, 100 epochs và batch size 32. `D = X_train_transformed.shape[1]`, không hardcode số chiều. `train_mlp_model` nhận validation riêng và trả model/history; `predict_mlp` trả vector `(N,)`, kể cả khi `N=1`.
+| Mô hình | Cấu hình | Điểm cần xem xét |
+| --- | --- | --- |
+| Linear Regression | `fit_intercept=True` | Dễ giải thích nhưng có thể chưa học được quan hệ phi tuyến. One-hot đầy đủ cùng intercept có thể làm hệ số không duy nhất, nên cần thận trọng khi diễn giải |
+| Decision Tree Regressor | `max_depth=5`, seed 42 | Học được ngưỡng và tương tác; cây quá nông dễ underfit, quá sâu dễ overfit |
+| Random Forest Regressor | `n_estimators=100`, seed 42 | Kết hợp nhiều cây để học quan hệ phi tuyến; tốn tài nguyên và khó giải thích hơn một cây |
+| MLP Keras | `D → 32 ReLU → 16 ReLU → 1 linear` | Nhạy với scaling, khởi tạo trọng số và thang target; cần theo dõi quá trình học |
 
-Bốn model dùng cùng train và preprocessor. Theo dõi train/validation để phân biệt underfitting, overfitting hoặc không hội tụ. Seed hỗ trợ tái lập split và các thành phần có random state; không mặc nhiên đảm bảo TensorFlow cho kết quả bit-for-bit trên mọi phần cứng. Ghi lại cấu hình/môi trường khi báo cáo thực nghiệm.
+MLP sử dụng Adam với learning rate 0.001, MSE loss và MAE để theo dõi huấn luyện. Mô hình chạy 100 epochs với batch size 32. Số chiều đầu vào được lấy từ `X_train_transformed.shape[1]`, không gán cố định.
 
-### 7.4. Metrics và nguyên tắc đánh giá
+Hàm `train_mlp_model` nhận validation riêng và trả mô hình cùng lịch sử huấn luyện. Hàm `predict_mlp` trả vector `(N,)`, kể cả khi chỉ dự đoán một mẫu (`N=1`).
 
-Với sai số `e_i = y_i - y_pred_i` và `N` mẫu:
+Bốn mô hình dùng cùng train và bộ tiền xử lý. So sánh train/validation giúp nhận biết underfitting, overfitting hoặc mô hình chưa hội tụ. Cần ghi lại seed, cấu hình và môi trường để có thể lặp lại thí nghiệm; TensorFlow vẫn có thể cho sai khác giữa các phần cứng.
 
-| Metric | Công thức                                 | Đơn vị / diễn giải                                     |
-| ------ | ------------------------------------------- | ----------------------------------------------------------- |
-| MSE    | `sum(e_i²) / N`                          | USD²; thấp hơn tốt hơn, phạt mạnh sai số lớn       |
-| RMSE   | `sqrt(MSE)`                               | USD; thấp hơn tốt hơn                                   |
-| MAE    | `sum(abs(e_i)) / N`                       | USD; sai số tuyệt đối trung bình, thấp hơn tốt hơn |
-| R²    | `1 - sum(e_i²) / sum((y_i - mean(y))²)` | Không đơn vị; cao hơn tốt hơn, có thể âm          |
+### 7.4. Đánh giá kết quả
 
-Không dùng accuracy cho regression. Metrics nhận vector cùng số mẫu, không rỗng, hữu hạn; tránh broadcasting do trộn shape `(N,)` và `(N,1)`. Trường hợp target hằng hoặc quá ít mẫu cần thống nhất quy ước xử lý R² và kiểm thử riêng trước khi sử dụng metric.
+Với `N` mẫu và sai số `e_i = y_i - y_pred_i`, các chỉ số được tính như sau:
 
-Trong validation, báo cáo cả bốn metrics và mô tả trade-off nếu thứ hạng MAE khác MSE. Nếu tiến hành tuning, chốt metric ưu tiên trước thí nghiệm. Sau khi chốt cấu hình, đánh giá cả bốn model trên cùng test ở giai đoạn báo cáo cuối; không tiếp tục chọn model bằng test.
+| Chỉ số | Công thức | Ý nghĩa |
+| --- | --- | --- |
+| MSE | `sum(e_i²) / N` | Đơn vị USD²; càng thấp càng tốt, nhạy với sai số lớn |
+| RMSE | `sqrt(MSE)` | Đơn vị USD; càng thấp càng tốt |
+| MAE | `sum(abs(e_i)) / N` | Sai số tuyệt đối trung bình theo USD; càng thấp càng tốt |
+| R² | `1 - sum(e_i²) / sum((y_i - mean(y))²)` | Không có đơn vị; càng cao càng tốt và có thể âm |
 
-Phân tích cần có actual-vs-predicted, learning curves, residuals, sai số vùng giá cao và các nhóm có đủ mẫu. Không dùng vài quan sát của nhóm hiếm để kết luận hiệu năng ổn định.
+Hai vector giá thực tế và giá dự đoán phải có cùng số mẫu, không rỗng và không chứa NaN hoặc vô cực. Cần thống nhất kích thước trước khi tính để tránh phép toán ngoài ý muốn giữa `(N,)` và `(N,1)`. Với target hằng hoặc quá ít mẫu, cần thống nhất cách xử lý R² và kiểm thử riêng. Accuracy không phù hợp với bài toán này.
 
-### 7.5. Artifact và suy luận
+Trong giai đoạn validation, báo cáo cả bốn chỉ số. Nếu MAE và MSE cho thứ hạng khác nhau, giải thích sự khác biệt về ảnh hưởng của sai số lớn. Trước khi tuning, thống nhất chỉ số ưu tiên. Khi đã chọn cấu hình, đánh giá cả bốn mô hình trên cùng test để viết báo cáo cuối; không tiếp tục điều chỉnh mô hình dựa trên test.
 
-| Artifact                                                | Hợp đồng                                                                               |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `data/processed/train.csv`, `val.csv`, `test.csv` | Raw features + target; chưa impute/encode/scale; giữ NaN; không lưu index             |
-| `results/saved_models/preprocessor.joblib`            | Toàn bộ fitted imputer/encoder/scaler và schema/thứ tự feature                       |
-| `results/saved_models/baseline_models.joblib`         | Ba baseline đã fit từ cùng train                                                      |
-| `results/saved_models/mlp_house_price_model.keras`    | MLP tương ứng với preprocessor và split                                              |
-| `results/metrics/model_performance_summary.csv`       | Cột `Model`, `MSE`, `RMSE`, `MAE`, `R2_Score`; cùng test và đơn vị target |
-| `results/figures/actual_vs_predicted.png`             | So sánh target thực tế và dự đoán                                                  |
-| `results/figures/loss_curve.png`                      | Learning curve; MAE curves cũng cần thể hiện trong notebook hoặc output biểu đồ   |
-| `results/figures/model_comparison_bar.png`            | So sánh mô hình, ghi rõ metric và đơn vị                                          |
-| `logs/training.log`                                   | Tiến trình/cấu hình/lỗi cần thiết; không ghi secret hoặc dữ liệu nhạy cảm    |
+Ngoài bảng số liệu, cần xem biểu đồ giá thực tế so với dự đoán, đường học và phần dư để biết mô hình thường sai ở đâu. Chú ý các mẫu giá cao và chỉ nhận xét theo nhóm khi có đủ dữ liệu.
 
-History được dùng ngay sau train để vẽ learning curves trong notebook 02 hoặc lượt chạy `main.py`. Notebook 03 không được giả định load model sẽ khôi phục history.
+### 7.5. Lưu kết quả và dùng mô hình để dự đoán
 
-Notebook 02/03 đọc raw CSV, tách target, nạp đúng preprocessor rồi transform. Không transform lần hai trên dữ liệu đã scale. Khi chạy lại notebook 01 tạo preprocessor mới, cần train lại models tương ứng. Chỉ nạp artifact nội bộ đáng tin cậy.
+| File kết quả | Nội dung |
+| --- | --- |
+| `data/processed/train.csv`, `val.csv`, `test.csv` | Đặc trưng và target chưa tiền xử lý; giữ NaN, không lưu index |
+| `results/saved_models/preprocessor.joblib` | Imputer, encoder, scaler và thông tin tên/thứ tự đặc trưng đã học từ train |
+| `results/saved_models/baseline_models.joblib` | Ba baseline đã huấn luyện trên cùng train |
+| `results/saved_models/mlp_house_price_model.keras` | MLP tương ứng với bộ tiền xử lý và cách chia dữ liệu |
+| `results/metrics/model_performance_summary.csv` | Các cột `Model`, `MSE`, `RMSE`, `MAE`, `R2_Score` trên cùng test |
+| `results/figures/actual_vs_predicted.png` | Biểu đồ giá thực tế so với dự đoán |
+| `results/figures/loss_curve.png` | Biểu đồ loss; đường MAE cũng được trình bày trong notebook hoặc biểu đồ kết quả |
+| `results/figures/model_comparison_bar.png` | Biểu đồ so sánh mô hình, ghi rõ chỉ số và đơn vị |
+| `logs/training.log` | Tiến trình, cấu hình và lỗi cần theo dõi; không ghi thông tin bí mật hoặc dữ liệu nhạy cảm |
 
-Suy luận: raw DataFrame đúng chín feature → kiểm schema → fitted preprocessor → model → vector giá trị USD. Save/load phải bảo toàn dự đoán toàn chuỗi trong tolerance phù hợp. Demo ba mẫu giữ lại từ test chỉ minh họa inference, không phải ba căn nhà mới ngoài dataset.
+Lịch sử huấn luyện được dùng để vẽ đường học ngay trong notebook 02 hoặc khi chạy `main.py`. Nạp lại mô hình trong notebook 03 không tự khôi phục lịch sử này.
 
-## 8. Rủi ro và failure modes
+Notebook 02 và 03 đọc CSV, tách target, nạp đúng bộ tiền xử lý rồi biến đổi dữ liệu. Tránh chuẩn hóa lần thứ hai trên dữ liệu đã chuẩn hóa. Nếu chạy lại notebook 01 và fit bộ tiền xử lý mới, cần huấn luyện lại mô hình tương ứng. Chỉ nạp các file mô hình từ nguồn đáng tin cậy.
 
-| Rủi ro                           | Biểu hiện                                                           | Kiểm soát / giới hạn                                                                               |
-| --------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Data leakage                      | Validation/test được dùng fit imputer/scaler hoặc chọn feature  | Split trước fit, EDA quyết định chỉ trên train, kiểm thống kê học từ train bằng unit test |
-| Schema/category thay đổi        | Sai cột, sai số chiều hoặc category mới                          | Kiểm tên cột, fitted encoder giữ chiều; category mới xử lý theo hợp đồng                    |
-| qcut không khả thi              | Trùng quantile, quá ít mẫu/bin                                    | Kiểm trước split, báo lỗi có hướng dẫn, không fallback ngầm                                 |
-| Artifact lệch lần chạy         | Dự đoán sai dù shape vẫn hợp lệ                                | Bàn giao model/preprocessor cùng lần train; kiểm round-trip toàn chuỗi                           |
-| Target giới hạn trên           | Sai số/khả năng ngoại suy vùng giá cao bị ảnh hưởng         | Giữ mẫu; nêu giới hạn 500001 USD, phân tích residuals                                           |
-| Nhóm hiếm                       | Kết luận không ổn định, category không xuất hiện trong train | Encoder xử lý unknown, báo số mẫu; tránh kết luận cho `ISLAND` từ 5 hàng                   |
-| MLP không hội tụ hoặc overfit | Loss/val_loss lớn hoặc phân kỳ                                    | Kiểm preprocessing và history; thay đổi thiết kế phải dựa validation và được duyệt        |
-| Ngoại suy                        | Dự đoán phi thực tế/âm hoặc sai ở vùng mới                  | Báo rõ failure case; không tự clip prediction để cải thiện metrics                             |
-| Spatial generalization            | Random split có khu vực gần nhau ở nhiều tập                    | Chỉ kết luận trên split hiện tại; đánh giá vùng địa lý mới cần thiết kế riêng        |
-| Kiểm chứng không đầy đủ    | Test bị bỏ qua hoặc thiếu assertions                              | Kiểm tra hợp đồng đầu vào/đầu ra; ghi rõ test chạy/skip/fail                                |
+Khi dự đoán, chương trình nhận DataFrame có chín đặc trưng, kiểm tra các cột, tiền xử lý bằng bộ đã lưu rồi đưa vào mô hình. Đầu ra là vector giá dự đoán theo USD. Cần kiểm tra kết quả trước và sau khi lưu/nạp để bảo đảm sai khác nằm trong mức cho phép. Ba mẫu minh họa lấy từ test chỉ dùng để giải thích cách dự đoán, không phải dữ liệu mới ngoài bộ dữ liệu.
 
-## 9. Kế hoạch validation và tiêu chí hoàn thành
+## 8. Những vấn đề có thể gặp
 
-Pipeline được nghiệm thu theo các tiêu chí sau:
+| Vấn đề | Biểu hiện | Cách xử lý hoặc giới hạn cần nêu |
+| --- | --- | --- |
+| Data leakage | Dùng validation/test để fit tiền xử lý hoặc chọn đặc trưng | Chia tập trước, chỉ học thống kê từ train và kiểm tra bằng unit test |
+| Cột hoặc nhóm phân loại thay đổi | Thiếu cột, sai số chiều hoặc gặp nhóm mới | Kiểm tên cột; dùng encoder đã fit để giữ số chiều |
+| Không chia được bằng qcut | Ranh giới phân vị trùng hoặc nhóm có quá ít mẫu | Kiểm tra trước khi chia, báo lỗi và hướng dẫn điều chỉnh |
+| Dùng nhầm bộ tiền xử lý | Dự đoán sai dù kích thước đầu vào vẫn đúng | Lưu mô hình và bộ tiền xử lý cùng lần huấn luyện; kiểm tra sau khi nạp lại |
+| Giá nhà có dấu hiệu bị giới hạn trên | Khó đánh giá khả năng dự đoán giá cao | Giữ các mẫu, nêu mức lớn nhất 500001 USD và phân tích phần dư |
+| Nhóm có quá ít mẫu | Kết quả theo nhóm không ổn định | Báo số mẫu; không kết luận hiệu năng của nhóm `ISLAND` chỉ từ năm dòng |
+| MLP chưa hội tụ hoặc overfit | Loss còn cao hoặc train/validation chênh lệch nhiều | Kiểm tra tiền xử lý và đường học; đánh giá thay đổi bằng validation trước khi duyệt |
+| Dự đoán ngoài phạm vi dữ liệu | Giá âm hoặc sai nhiều ở vùng mới | Nêu rõ trường hợp lỗi; không tự cắt giá dự đoán để cải thiện chỉ số |
+| Khả năng dự đoán ở vùng địa lý mới | Chia ngẫu nhiên có thể đặt các khu vực gần nhau vào nhiều tập | Kết quả chỉ phản ánh cách chia đang dùng; đánh giá vùng mới cần thí nghiệm riêng |
+| Kiểm thử chưa đầy đủ | Test bị bỏ qua hoặc không kiểm tra kết quả | Bổ sung kiểm tra đầu vào/đầu ra và báo số test chạy, bỏ qua hoặc thất bại |
 
-- [ ] Loader đọc đúng local CSV; lỗi thiếu file/sai schema/target thiếu hoặc không hữu hạn có thông tin.
-- [ ] Split tái lập, đủ tổng số dòng, không giao nhau, X/y thẳng hàng; qcut edge cases có kiểm chứng.
-- [ ] Imputation/scaling/encoding chỉ học train; kiểm NaN, cột train thiếu hoàn toàn, category mới, thiếu/dư/đảo thứ tự cột.
-- [ ] Raw CSV round-trip giữ dữ liệu và target; đầu vào transform không bị scale hai lần.
-- [ ] Baselines chạy trước MLP; bốn model dự đoán đúng shape và hữu hạn, gồm trường hợp một mẫu.
-- [ ] MLP đúng kiến trúc/cấu hình; có history thực nghiệm và validation độc lập.
-- [ ] Metrics đối chiếu bằng ví dụ nhỏ tính được và thư viện; kiểm shape, input rỗng, R² edge cases và đơn vị.
-- [ ] Lưu/nạp preprocessor → model cho dự đoán nhất quán trên raw input có NaN/category mới.
-- [ ] Smoke test với fixture nhỏ cùng schema kiểm toàn tuyến; MLP một epoch trong smoke test không thay cấu hình 100 epochs của bài.
-- [ ] Notebook 01 → 02 → 03 và CLI dùng cùng module/hợp đồng; tests có assertions kiểm tra hành vi và hợp đồng đầu vào/đầu ra.
-- [ ] Báo cáo test cuối có bảng bốn model, plots và nhận xét đúng dữ liệu; không bịa benchmark hay khẳng định MLP tốt hơn khi chưa đo.
-- [ ] Báo cáo nêu California/80–10–10 là lựa chọn thiết kế, giới hạn target/nhóm hiếm và phạm vi suy rộng.
+## 9. Kiểm tra trước khi hoàn thành
 
-Xác minh bằng `python main.py`, chạy notebooks theo thứ tự 01 → 02 → 03 và `pytest tests/ -v`. Đối chiếu artifacts và kết quả kiểm thử với checklist nghiệm thu.
+- [ ] Đọc đúng CSV và báo lỗi rõ khi thiếu file, sai cột hoặc target không hợp lệ.
+- [ ] Chia dữ liệu lặp lại được với cùng seed; bảo toàn số dòng, không trùng mẫu giữa các tập và giữ X/y khớp nhau.
+- [ ] Kiểm tra các trường hợp qcut không chia được dữ liệu.
+- [ ] Chỉ fit tiền xử lý trên train; kiểm tra giá trị thiếu, cột thiếu toàn bộ, nhóm mới và cột thiếu/thừa/đổi thứ tự.
+- [ ] Dữ liệu giữ nguyên sau khi lưu rồi đọc lại CSV; không bị chuẩn hóa hai lần.
+- [ ] Huấn luyện baseline trước MLP; bốn mô hình trả dự đoán đúng kích thước và không có NaN hoặc vô cực, kể cả với một mẫu.
+- [ ] MLP đúng kiến trúc và cấu hình, có lịch sử huấn luyện và validation riêng.
+- [ ] Đối chiếu chỉ số với ví dụ tính tay và thư viện; kiểm tra dữ liệu rỗng, kích thước, đơn vị và trường hợp đặc biệt của R².
+- [ ] Dự đoán trước và sau khi lưu/nạp khớp nhau trong sai số cho phép, kể cả với đầu vào có giá trị thiếu hoặc nhóm mới.
+- [ ] Chạy thử toàn bộ quy trình với dữ liệu nhỏ có cùng cấu trúc. Một epoch trong lần kiểm thử nhanh không thay thế 100 epochs của bài thực hành.
+- [ ] Notebook 01 → 02 → 03 và `main.py` dùng chung các hàm; tests kiểm tra được đầu vào/đầu ra.
+- [ ] Báo cáo có bảng so sánh bốn mô hình, biểu đồ và nhận xét từ kết quả thực nghiệm.
+- [ ] Nêu rõ lựa chọn California Housing, tỷ lệ 80/10/10 và giới hạn khi suy rộng kết quả.
+
+Chạy `python main.py`, các notebook theo thứ tự và `pytest tests/ -v` để kiểm tra. Sau đó đối chiếu các file kết quả với danh sách trên.
