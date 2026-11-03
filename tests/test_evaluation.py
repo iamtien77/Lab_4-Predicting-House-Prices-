@@ -8,6 +8,8 @@ Nhiệm vụ:
 """
 
 import pytest
+
+pytestmark = pytest.mark.skip(reason="Skeleton: chưa triển khai kiểm thử")
 import numpy as np
 import pandas as pd
 

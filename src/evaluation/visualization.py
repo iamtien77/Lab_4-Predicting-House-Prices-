@@ -55,7 +55,7 @@ def plot_actual_vs_predicted(
     #   max_val = max(y_true.max(), y_pred.max())
     #   ax.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Đường lý tưởng y = x')
     # BƯỚC 5: Thêm text box chú thích MSE và R² trực tiếp trong biểu đồ nếu có.
-    # BƯỚC 6: Thiết lập nhãn trục x ('Actual House Prices ($1,000s)'), trục y ('Predicted House Prices ($1,000s)'),
+    # BƯỚC 6: Thiết lập nhãn trục x ('Actual House Prices (USD)'), trục y ('Predicted House Prices (USD)'),
     #         tiêu đề f'Actual vs. Predicted House Prices ({model_name})', lưới (grid), và chú giải (legend).
     # BƯỚC 7: Nếu có save_path: plt.savefig(save_path, dpi=dpi, bbox_inches='tight').
     # BƯỚC 8: Đóng figure (plt.close(fig)) để giải phóng bộ nhớ.
@@ -106,7 +106,7 @@ def plot_loss_and_mae_curves(
     #   if val_mae: ax2.plot(epochs_range, val_mae, 'orange', linestyle='--', label='Val MAE')
     #   ax2.set_title('Training and Validation MAE over Epochs')
     #   ax2.set_xlabel('Epochs')
-    #   ax2.set_ylabel('MAE ($1,000s)')
+    #   ax2.set_ylabel('MAE (USD)')
     #   ax2.legend(); ax2.grid(True)
 
     # BƯỚC 5: Lưu ảnh ra save_path và đóng figure.
