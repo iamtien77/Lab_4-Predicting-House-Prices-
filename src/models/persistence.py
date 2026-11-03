@@ -3,13 +3,13 @@ Module Lưu Trữ & Tải Lại Mô Hình (Model Persistence Module)
 Phụ trách: Bạn Tường và Bạn Trí (Task 2)
 Nhiệm vụ:
 - Lưu trữ mô hình mạng nơ-ron MLP Keras định dạng chuẩn .keras (hoặc .h5).
-- Lưu trữ bộ 3 mô hình Baseline Scikit-learn và bộ chuẩn hóa StandardScaler định dạng .joblib.
+- Lưu trữ bộ 3 mô hình Baseline Scikit-learn và toàn bộ preprocessing đã fit định dạng .joblib.
 - Tải lại các artifact phục vụ suy luận dự đoán giá nhà độc lập trong tương lai (Inference pipeline).
 """
 
 from typing import Dict, Any, Union
 from pathlib import Path
-from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
 
 
 def save_mlp_model(
@@ -113,48 +113,21 @@ def load_baseline_models(
     pass
 
 
-def save_scaler(
-    scaler: StandardScaler,
-    filepath: Union[str, Path]
-) -> None:
-    """
-    Lưu trữ đối tượng StandardScaler đã fit trên tập Train (80%).
 
-    Parameters:
-    -----------
-    scaler : StandardScaler
-        Đối tượng chuẩn hóa đã học μ và σ từ tập huấn luyện.
-    filepath : Union[str, Path]
-        Đường dẫn lưu trữ file .joblib.
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: Đảm bảo thư mục cha tồn tại.
-    # BƯỚC 2: Dùng joblib.dump(scaler, filepath).
-    # BƯỚC 3: Ghi log xác nhận lưu trữ scaler.
+def save_preprocessor(preprocessor: ColumnTransformer, filepath: Union[str, Path]) -> None:
+    """Đặc tả: lưu toàn bộ ColumnTransformer đã fit bằng joblib.
+    Đích config.PREPROCESSOR_PATH (preprocessor.joblib). Bao gồm imputer,
+    scaler, encoder và schema/thứ tự feature từ train. Kiểm đã fit, tạo thư mục
+    cha; không chỉ lưu scaler. Đi kèm model và raw splits cùng lần huấn luyện.
+    Nếu bật feature engineering sau này, artifact phải chứa cả bước đó.
     """
     pass
 
 
-def load_scaler(
-    filepath: Union[str, Path]
-) -> StandardScaler:
-    """
-    Tải lại StandardScaler từ file .joblib phục vụ chuẩn hóa mẫu dữ liệu mới khi suy luận.
-
-    Parameters:
-    -----------
-    filepath : Union[str, Path]
-        Đường dẫn tới file scaler .joblib.
-
-    Returns:
-    --------
-    StandardScaler
-        Đối tượng scaler đã nạp sẵn các tham số thống kê μ và σ.
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: assert Path(filepath).exists().
-    # BƯỚC 2: Trả về joblib.load(filepath).
+def load_preprocessor(filepath: Union[str, Path]) -> ColumnTransformer:
+    """Đặc tả: nạp artifact nội bộ đáng tin cậy bằng joblib, không fit lại.
+    Kiểm file, kiểu artifact và trạng thái fitted. Dùng với transform_features
+    trên feature thô. Schema nằm trong ColumnTransformer; dataset/target unit
+    cố định theo config: California Housing, median_house_value, USD.
     """
     pass

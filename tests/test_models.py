@@ -8,7 +8,11 @@ Nhiệm vụ:
 - Kiểm tra quy trình lưu trữ và tải lại mô hình (Model Persistence).
 """
 
+from typing import Any
+
 import pytest
+
+pytestmark = pytest.mark.skip(reason="Skeleton: chưa triển khai kiểm thử")
 import numpy as np
 
 
@@ -18,7 +22,7 @@ def test_build_mlp_model_architecture() -> None:
 
     Logic chi tiết cần cài đặt:
     ---------------------------
-    # BƯỚC 1: Khởi tạo model = build_mlp_model(input_dim=13).
+    # BƯỚC 1: Khởi tạo model = build_mlp_model(input_dim=7).
     # BƯỚC 2: Kiểm tra tổng số layers: assert len(model.layers) == 3.
     # BƯỚC 3: Kiểm tra Layer 1:
     #   assert model.layers[0].units == 32
@@ -39,8 +43,8 @@ def test_mlp_prediction_shape() -> None:
 
     Logic chi tiết cần cài đặt:
     ---------------------------
-    # BƯỚC 1: Khởi tạo model = build_mlp_model(input_dim=13).
-    # BƯỚC 2: Tạo mảng đầu vào giả lập X_test = np.random.randn(20, 13).
+    # BƯỚC 1: Khởi tạo model = build_mlp_model(input_dim=7).
+    # BƯỚC 2: Tạo mảng đầu vào giả lập X_test = np.random.randn(20, 7).
     # BƯỚC 3: preds = predict_mlp(model, X_test).
     # BƯỚC 4: assert preds.shape == (20,), f"Shape đầu ra phải là (20,), thực tế: {preds.shape}"
     # BƯỚC 5: assert not np.isnan(preds).any(), "Kết quả dự đoán không được chứa NaN"
@@ -54,7 +58,7 @@ def test_baseline_models_fit_and_predict() -> None:
 
     Logic chi tiết cần cài đặt:
     ---------------------------
-    # BƯỚC 1: Tạo dữ liệu giả lập X_train (50, 13), y_train (50,), X_test (10, 13).
+    # BƯỚC 1: Tạo dữ liệu giả lập X_train (50, 7), y_train (50,), X_test (10, 7).
     # BƯỚC 2: suite = BaselineRegressionSuite(random_state=42).
     # BƯỚC 3: suite.fit_all(X_train, y_train).
     # BƯỚC 4: preds = suite.predict_all(X_test).

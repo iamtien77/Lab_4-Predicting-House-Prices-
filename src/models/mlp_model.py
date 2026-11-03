@@ -16,7 +16,7 @@ import numpy as np
 
 
 def build_mlp_model(
-    input_dim: int = 13,
+    input_dim: int,
     learning_rate: float = 0.001
 ) -> Any:
     """
@@ -25,7 +25,7 @@ def build_mlp_model(
     Parameters:
     -----------
     input_dim : int
-        Số chiều của véc-tơ đặc trưng đầu vào (mặc định 13 với Boston Housing hoặc theo X_train.shape[1]).
+        Bắt buộc lấy X_train_transformed.shape[1]; không cố định số chiều.
     learning_rate : float
         Tốc độ học của thuật toán tối ưu Adam (mặc định 0.001).
 
