@@ -1,150 +1,82 @@
-# 🏠 Lab 4: Multilayer Perceptron (MLP) Regression — House Price Prediction
+# Lab 4 — MLP Regression dự đoán giá nhà
 
-Dự án xây dựng mô hình mạng nơ-ron đa lớp **Multilayer Perceptron (MLP)** sử dụng **TensorFlow / Keras** cho bài toán hồi quy (Regression) dự đoán giá nhà, đồng thời đối chuẩn hiệu năng toàn diện với 3 thuật toán học máy kinh điển (**Linear Regression**, **Decision Tree Regressor**, **Random Forest Regressor**) theo yêu cầu thực hành **Lab 4 (Practice Exercise 4)**.
+**Trạng thái: skeleton thiết kế, chưa triển khai logic huấn luyện/đánh giá.** Các hàm và test chủ yếu là khung hướng dẫn; notebook chứa Markdown và comment. Chưa có kết quả thực nghiệm để kết luận mô hình nào tốt hơn. Các lệnh bên dưới là quy trình dự kiến sau khi triển khai, không phải bằng chứng hệ thống đã chạy.
 
----
+## 1. Phạm vi và đối chiếu đề bài
 
-## 📌 1. Tổng Quan & Cải Tiến Kỹ Thuật
+Bài toán regression dự đoán `median_house_value` từ dữ liệu California tại `data/raw/housing.csv`. Nguồn local là nguồn duy nhất; thiếu file hoặc sai schema phải báo lỗi, không tự tải hay đổi sang dataset khác.
 
-- **Dạng bài toán**: Hồi quy (Regression) — Dự đoán biến mục tiêu liên tục (giá nhà).
-- **Bộ dữ liệu chính**: `data/raw/housing.csv` (California Housing Dataset gồm **20,640 mẫu**, 10 thuộc tính; hỗ trợ cơ chế nạp dự phòng Boston Housing qua OpenML/StatLib).
-- **Phân chia dữ liệu chuẩn 8:1:1 (Train - Validation - Test)**:
-  - **Train set (80% — 16,512 mẫu)**: Dùng để cập nhật trọng số mạng nơ-ron và huấn luyện các mô hình Baseline.
-  - **Validation set (10% — 2,064 mẫu)**: Dùng làm `validation_data` giám sát sự suy giảm của hàm mất mát (Loss/MAE) qua từng epoch, phát hiện sớm overfitting.
-  - **Test set (10% — 2,064 mẫu)**: Tập kiểm thử hoàn toàn độc lập, chỉ đưa vào đánh giá ở bước cuối cùng nhằm triệt tiêu hoàn toàn nguy cơ **rò rỉ dữ liệu (Data Leakage)**.
-- **Chuẩn hóa đặc trưng**: Áp dụng `StandardScaler` theo nguyên tắc nghiêm ngặt: **chỉ fit trên tập Train (80%)**, sau đó áp dụng `transform` cho tập Validation và Test.
+Đề gốc nằm ở `docs/Practice exercise 4.pdf`. Task 2 của PDF dùng Boston Housing và ví dụ chia train/test 80/20, đồng thời dùng test làm validation. Thiết kế nội bộ trong tài liệu phân công chọn California Housing và chia **80/10/10** để có validation riêng. Đây là lựa chọn của dự án, không phải tỷ lệ được PDF yêu cầu. Khi nộp bài cần trình bày rõ khác biệt này.
 
----
+Phần giữ theo đề: MLP Keras `32 ReLU → 16 ReLU → 1 linear`, Adam (learning rate 0.001), MSE loss, MAE khi huấn luyện, 100 epochs và batch size 32; so sánh với Linear Regression, Decision Tree, Random Forest. Đánh giá MSE, MAE, R²; bổ sung RMSE để dễ diễn giải.
 
-## 🎯 2. Các Yêu Cầu Cốt Lõi (Theo Đề Bài Lab 4)
+## 2. Dữ liệu và giới hạn đã kiểm tra
 
-1. **Tiền xử lý & Phân chia dữ liệu 8:1:1**:
-   - Nạp dữ liệu an toàn, xử lý giá trị khuyết thiếu (NaN) trên `total_bedrooms` bằng phương pháp trung vị (median).
-   - Tách ma trận đặc trưng ($X$) và biến mục tiêu ($y$).
-   - Phân chia tập dữ liệu 2 bước theo phân tầng phân vị (`pd.qcut`): Train (80%) – Validation (10%) – Test (10%).
-   - Chuẩn hóa đặc trưng bằng `StandardScaler`.
-2. **Xây dựng mô hình MLP (TensorFlow / Keras Sequential)**:
-   - **Layer 1**: `Dense(32, activation='relu', input_dim=...)`
-   - **Layer 2**: `Dense(16, activation='relu')`
-   - **Output Layer**: `Dense(1, activation='linear')`
-   - **Biên dịch (Compile)**: `optimizer='adam'` (learning rate = 0.001), `loss='mean_squared_error'` (MSE), `metrics=['mae']`.
-3. **Huấn luyện mô hình**:
-   - `epochs=100`, `batch_size=32`, `validation_data=(X_val_scaled, y_val)` (10% Validation).
-   - Theo dõi sự suy giảm của hàm mất mát và sai số tuyệt đối qua từng epoch (Learning Curves).
-4. **Đánh giá & Trực quan hóa**:
-   - Đo lường 4 chỉ số hồi quy: **MSE (Mean Squared Error)**, **RMSE (Root MSE)**, **MAE (Mean Absolute Error)**, và **$R^2$ Score (Hệ số xác định)**.
-   - Vẽ biểu đồ phân tán giá thực tế vs giá dự đoán (**Actual vs Predicted Scatter Plot**) kèm đường tham chiếu lý tưởng $y = x$ màu đỏ đứt nét (dpi=300).
-   - Vẽ biểu đồ diễn biến tiến trình học tập (**Loss & MAE Curves** qua 100 epochs).
-5. **Mở rộng đối chuẩn với Baseline Regression Models (Task 6)**:
-   - Huấn luyện: **Linear Regression**, **Decision Tree Regressor** (`max_depth=5`), **Random Forest Regressor** (`n_estimators=100`).
-   - Xuất bảng đối chuẩn tổng hợp `results/metrics/model_performance_summary.csv`.
-   - Vẽ biểu đồ cột đối chiếu MSE và $R^2$ giữa cả 4 mô hình.
-   - Demo suy luận dự đoán giá nhà trên 3 mẫu thực tế mới.
+- CSV local có 20.640 hàng, 10 cột: 9 đặc trưng và target `median_house_value`.
+- `total_bedrooms` có 207 giá trị thiếu; `ocean_proximity` là categorical có 5 nhóm.
+- Giá trị target lớn nhất là **500001 USD**, xuất hiện **965/20640** hàng. Đây là dấu hiệu giới hạn trên cần nêu trong báo cáo; không tự loại các hàng này.
+- Nhóm `ISLAND` chỉ có **5 hàng**. Chia ngẫu nhiên có thể khiến một tập không có nhóm này; encoder phải xử lý nhóm chưa thấy. Không suy ra hiệu năng đáng tin cậy cho nhóm này từ vài quan sát.
+- Target là giá trị nhà trung vị của khu vực trong dataset, không phải giá giao dịch một căn nhà cụ thể. Kết quả chỉ phản ánh phân phối và cách chia của bộ dữ liệu.
 
----
+Target giữ nguyên đơn vị **USD** trong phần cốt lõi, không log/scale target. MAE và RMSE có đơn vị USD; MSE là USD²; R² không có đơn vị. Nếu thêm biến đổi target về sau, cần quyết định riêng và inverse-transform trước đánh giá.
 
-## 👥 3. Phân Công Trách Nhiệm Thành Viên (3 Tasks)
+## 3. Luồng dữ liệu dự kiến
 
-| Giai đoạn | Trọng tâm công việc | Thành viên phụ trách | Module mã nguồn phụ trách |
-| :--- | :--- | :--- | :--- |
-| **TASK 1** | Dữ liệu, Khám phá EDA, Tiền xử lý, Chia tập 8:1:1 & Kỹ thuật đặc trưng | **Huyền & My** | `src/config.py`, `src/data/loader.py`, `src/data/preprocessing.py`, `src/features/feature_engineering.py`, `notebooks/01_eda_and_preprocessing.ipynb`, `tests/test_data.py`, `tests/test_features.py` |
-| **TASK 2** | Kiến trúc mạng MLP Keras, Huấn luyện 100 Epochs, Baseline Models (Task 6) & Lưu trữ | **Tường & Trí** | `src/models/mlp_model.py`, `src/models/baseline_models.py`, `src/models/persistence.py`, `notebooks/02_mlp_model_training.ipynb`, `tests/test_models.py` |
-| **TASK 3** | Đánh giá đa chiều, Trực quan hóa đồ thị (dpi=300), Hệ thống logging & Điều phối `main.py` | **Tiến & Thịnh** | `src/evaluation/metrics.py`, `src/evaluation/visualization.py`, `src/utils/logger.py`, `main.py`, `notebooks/03_baseline_and_comparison.ipynb`, `tests/test_evaluation.py` |
+1. `load_housing_data(filepath=None)` đọc CSV local, kiểm schema và trả `(df, target_col)`. Không impute target thiếu.
+2. Tách X/y, dùng `split_data_8_1_1` trả 6 đối tượng pandas **chưa tiền xử lý**: X_train, X_val, X_test, y_train, y_val, y_test. Seed 42; dự kiến 16.512/2.064/2.064 hàng với dữ liệu hiện tại. Chính sách qcut phải xử lý phân vị trùng hoặc nhóm quá ít rõ ràng.
+3. EDA phục vụ quyết định mô hình thực hiện trên train sau split. Không dùng test để chọn đặc trưng hay tinh chỉnh.
+4. `fit_preprocessor(X_train)` fit một `ColumnTransformer`: numeric dùng median imputation rồi StandardScaler; categorical dùng most-frequent imputation rồi `OneHotEncoder(handle_unknown='ignore', sparse_output=False, drop=None)`.
+5. `transform_features(preprocessor, X)` trả dense ndarray theo schema/thứ tự cột đã học; không fit lại trên validation, test hoặc mẫu suy luận. Chiều vào MLP lấy từ số cột sau transform.
+6. Huấn luyện baseline trước để kiểm toàn tuyến, sau đó MLP với validation riêng. Cả bốn mô hình dùng cùng split và preprocessing. Decision Tree dự kiến max_depth=5, Random Forest n_estimators=100.
+7. Sau khi chốt lựa chọn bằng validation, đánh giá cả bốn mô hình trên test một lần trong giai đoạn báo cáo cuối. Xuất bảng metrics, actual-vs-predicted, loss/MAE curves và biểu đồ so sánh; phân tích kết quả thực tế, không định trước mô hình thắng.
+8. Demo dùng 3 mẫu giữ lại từ test để minh họa suy luận; đây không phải 3 căn nhà mới ngoài dataset. Suy luận raw input phải dùng đầy đủ preprocessor đã fit rồi mới predict.
 
----
+Feature engineering (`HousingFeatureEngineer`) là phần mở rộng **tắt mặc định**, chưa nằm trong pipeline cốt lõi. Chỉ bật sau baseline và khi có kế hoạch đánh giá trên validation.
 
-## 📁 4. Cấu Trúc Thư Mục Dự Án
+## 4. Hợp đồng artifact
 
-```text
-Lab_4/
-├── main.py                         # File chạy chính điều phối liên hoàn 8 bước của pipeline
-├── Practice exercise 4.pdf         # Đề bài thực hành gốc
-├── requirements.txt                # Danh sách thư viện yêu cầu (tensorflow, scikit-learn...)
-├── README.md                       # Tài liệu hướng dẫn & mô tả kiến trúc hệ thống
-├── data/                           # Quản lý dữ liệu
-│   ├── raw/                        # Dữ liệu gốc (housing.csv - 20,640 mẫu)
-│   └── processed/                  # Dữ liệu sau chia tập 8:1:1 (train.csv, val.csv, test.csv)
-├── notebooks/                      # Sổ tay thực nghiệm tương tác Jupyter
-│   ├── 01_eda_and_preprocessing.ipynb   # Khám phá EDA, xử lý khuyết thiếu, chia tập 8:1:1
-│   ├── 02_mlp_model_training.ipynb      # Xây dựng MLP Sequential Keras, train 100 epochs
-│   ├── 03_baseline_and_comparison.ipynb # Huấn luyện LR, Decision Tree, Random Forest & so sánh
-│   └── README.md                   # Hướng dẫn sử dụng các sổ tay
-├── src/                            # Mã nguồn module hóa chính của dự án
-│   ├── __init__.py
-│   ├── config.py                   # Cấu hình tập trung (paths, hyperparams, split 8:1:1)
-│   ├── data/                       # Module dữ liệu
-│   │   ├── __init__.py
-│   │   ├── loader.py               # Nạp dữ liệu an toàn đa nguồn
-│   │   └── preprocessing.py        # Xử lý khuyết thiếu, chia 8:1:1, StandardScaler
-│   ├── features/                   # Module kỹ thuật đặc trưng
-│   │   ├── __init__.py
-│   │   └── feature_engineering.py  # Biến đổi Log1p, tương tác đặc trưng kinh tế
-│   ├── models/                     # Module mô hình học máy & mạng nơ-ron
-│   │   ├── __init__.py
-│   │   ├── mlp_model.py            # Khởi tạo & huấn luyện Sequential MLP Keras
-│   │   ├── baseline_models.py      # Bộ 3 mô hình Baseline Scikit-learn (Task 6)
-│   │   └── persistence.py          # Lưu/tải model (.keras, .joblib) & scaler (.joblib)
-│   ├── evaluation/                 # Module đánh giá & trực quan hóa
-│   │   ├── __init__.py
-│   │   ├── metrics.py              # Tính toán 4 chỉ số MSE, RMSE, MAE, R2-score
-│   │   └── visualization.py        # Vẽ Actual vs Predicted, Loss curves, Bar chart
-│   └── utils/                      # Tiện ích bổ trợ
-│       ├── __init__.py
-│       └── logger.py               # Logger ghi console/file & decorator đo thời gian @log_step
-├── results/                        # Thư mục chứa kết quả xuất bản
-│   ├── figures/                    # Đồ thị xuất bản (loss_curve.png, actual_vs_predicted.png...)
-│   ├── metrics/                    # Bảng tổng hợp đối chuẩn (model_performance_summary.csv)
-│   └── saved_models/               # Trọng số mô hình đã huấn luyện (.keras, .joblib)
-└── tests/                          # Kiểm thử tự động (Unit tests)
-    ├── __init__.py
-    ├── test_data.py                # Kiểm thử nạp dữ liệu & chia tập chuẩn 8:1:1
-    ├── test_features.py            # Kiểm thử biến đổi log1p & tạo biến tương tác
-    ├── test_models.py              # Kiểm thử kiến trúc MLP, shapes & baseline fit/predict
-    └── test_evaluation.py          # Kiểm thử tính đúng đắn toán học của MSE, RMSE, MAE, R2
-```
+| Artifact dự kiến                                      | Nội dung                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `data/processed/train.csv`, `val.csv`, `test.csv` | Raw split có cả target; giữ NaN đặc trưng, chưa impute/encode/scale; không lưu index |
+| `results/saved_models/preprocessor.joblib`            | Toàn bộ fitted ColumnTransformer: imputer, encoder/categories và scaler                    |
+| `results/saved_models/mlp_house_price_model.keras`    | MLP đã huấn luyện                                                                         |
+| `results/saved_models/baseline_models.joblib`         | Ba baseline đã fit                                                                          |
+| `results/metrics/model_performance_summary.csv`       | Model, MSE, RMSE, MAE, R2_Score trên cùng test                                              |
+| `results/figures/`                                    | Các biểu đồ kết quả sau thực nghiệm                                                   |
 
----
+`save_processed_splits` lưu raw CSV; notebook sau đọc các CSV này, tách target rồi gọi `load_preprocessor` và `transform_features`. Không có hợp đồng `.npy` đã scale và không lưu scaler riêng. Việc lưu/tải phải giữ schema, đơn vị target và khả năng tái tạo cùng dự đoán; test persistence cần kiểm cả chuỗi preprocessing → model.
 
-## ⚡ 5. Hướng Dẫn Cài Đặt & Thực Thi
+## 5. Cấu trúc và trách nhiệm
 
-### 1. Cài đặt môi trường
-Khuyến nghị tạo môi trường ảo Python 3.10+ và cài đặt các thư viện phụ thuộc:
-```bash
-pip install -r requirements.txt
-```
+| Khu vực                                         | Vai trò                                                    | Phụ trách             |
+| ------------------------------------------------ | ----------------------------------------------------------- | ----------------------- |
+| `src/config.py`, `src/data/`                 | Cấu hình, local loader, split, preprocessing và raw CSV  | Huyền & My             |
+| `src/features/`                                | Feature engineering optional, tắt mặc định              | Huyền & My             |
+| `src/models/`                                  | Baselines, MLP, persistence model và preprocessor          | Tường & Trí          |
+| `src/evaluation/`, `src/utils/`, `main.py` | Metrics, biểu đồ, logging và điều phối               | Tiến & Thịnh          |
+| `notebooks/01_eda_and_preprocessing.ipynb`     | Diễn giải dữ liệu và preprocessing                     | Huyền & My             |
+| `notebooks/02_mlp_model_training.ipynb`        | Baseline trước, rồi MLP và lưu models                  | Tường & Trí          |
+| `notebooks/03_baseline_and_comparison.ipynb`   | Nạp models, đánh giá test và so sánh                  | Tiến & Thịnh          |
+| `tests/`                                       | Kiểm hợp đồng dữ liệu, model, metrics và persistence | Theo module phụ trách |
 
-### 2. Thực thi toàn bộ pipeline tự động (Một chạm qua `main.py`)
-```bash
-python main.py
-```
-*Lệnh trên sẽ tự động thực hiện liên hoàn 8 bước:*
-1. Nạp cấu hình hệ thống và khởi tạo seed ngẫu nhiên (`random_state=42`).
-2. Nạp dữ liệu và kiểm tra cấu trúc schema.
-3. Chia tập theo tỷ lệ **8:1:1** và chuẩn hóa `StandardScaler` (chống data leakage).
-4. Huấn luyện mô hình **MLP Keras (100 Epochs)** với tập Validation (10%).
-5. Huấn luyện **3 mô hình Baseline** (Linear Regression, Decision Tree, Random Forest).
-6. Đánh giá đa chiều trên **tập Test độc lập (10%)** (MSE, RMSE, MAE, $R^2$).
-7. Xuất bảng đối chuẩn CSV và vẽ các biểu đồ xuất bản chất lượng cao (dpi=300).
-8. Demo suy luận dự đoán giá nhà trên 3 mẫu thực tế mới.
+Notebook gọi chung logic trong `src/`; không xây một pipeline riêng. `main.py` điều phối cùng các module. Giữ cấu trúc hiện tại, chưa cần thêm tầng hay framework.
 
-### 3. Khởi chạy sổ tay tương tác (Jupyter Notebooks)
-```bash
-jupyter notebook notebooks/01_eda_and_preprocessing.ipynb
-```
+## 6. Môi trường và xác minh dự kiến
 
-### 4. Chạy kiểm thử tự động (Unit Tests)
-```bash
-pytest tests/ -v
-```
+`requirements.txt` hiện liệt kê dependency ML; chưa xác minh môi trường chạy và chưa bổ sung dependency trong đợt chỉnh skeleton. README trước có hướng dẫn pytest/Jupyter nhưng hai công cụ này chưa được khai báo; cần thống nhất môi trường phát triển trước khi triển khai.
 
----
+Sau khi logic và môi trường được hoàn thiện, các điểm chạy dự kiến là `python main.py`, notebook theo thứ tự 01 → 02 → 03 và `pytest tests/ -v`. Hiện tại chạy file không chứng minh pipeline hoạt động; test placeholder không chứng minh tính đúng.
 
-## 📊 6. Tiêu Chuẩn Nghiệm Thu Kỹ Thuật (Checklist)
+Checklist chưa nghiệm thu:
 
-- [x] **Dữ liệu & Phân chia 8:1:1**: Chia chính xác 80% Train, 10% Validation, 10% Test; không rò rỉ dữ liệu qua `StandardScaler`.
-- [x] **Kiến trúc MLP chuẩn Keras**: Đủ 3 lớp Sequential (Dense 32 ReLU $\rightarrow$ Dense 16 ReLU $\rightarrow$ Dense 1 Linear), compile `adam` & `mse`.
-- [x] **Huấn luyện 100 Epochs**: Theo dõi sát sao biến thiên loss và MAE trên cả 2 tập Train và Validation.
-- [x] **Bộ 3 Mô hình Baseline (Task 6)**: Tích hợp đầy đủ Linear Regression, Decision Tree, Random Forest.
-- [x] **Đánh giá đa chiều**: Tính chuẩn xác 4 chỉ số (MSE, RMSE, MAE, $R^2$) và xuất file `model_performance_summary.csv`.
-- [x] **Trực quan hóa chuẩn mực (dpi=300)**: Scatter plot có đường chéo $y=x$, Loss Learning Curves, Bar chart so sánh.
-- [x] **Sổ tay tương tác (Jupyter)**: Cả 3 notebook đều tuân thủ chuẩn JSON v4, phân chia rõ ràng cell mô tả và cell code logic.
+- [ ] Loader/schema local, target hợp lệ và lỗi có thông tin.
+- [ ] Split tái lập, không giao nhau, X/y thẳng hàng; xử lý qcut edge cases.
+- [ ] Imputer/encoder/scaler chỉ học từ train; NaN, category mới, thứ tự feature được kiểm.
+- [ ] Baseline và MLP fit/predict đúng shape trên cùng dữ liệu.
+- [ ] Lưu/tải toàn chuỗi cho cùng dự đoán.
+- [ ] Metrics đúng đơn vị, test chỉ dùng cho đánh giá cuối, không định trước thứ hạng.
+- [ ] Notebook chạy tuần tự và có kết quả/nhận xét thực nghiệm thực tế.
+
+## 7. Thứ tự triển khai sau khi được duyệt
+
+Chốt schema và hợp đồng artifact → loader/split/preprocessor → baseline → MLP → persistence và đánh giá → notebook/báo cáo. Ưu tiên kiểm leakage, categorical encoding và tính nhất quán giữa train/inference; chưa thêm feature engineering phức tạp.
