@@ -12,7 +12,7 @@ from typing import Dict, List, Any
 class ProjectConfig:
     """
     Class quản lý toàn bộ cấu hình dự án Dự đoán giá nhà (MLP & Baselines).
-    Tuân thủ chuẩn đề bài Lab 4 và chia tập dữ liệu 8:1:1 (Train 80% - Val 10% - Test 10%).
+    California Housing; 8:1:1 là lựa chọn dự án (PDF minh họa train/test 80/20).
     """
 
     # --------------------------------------------------------------------------
@@ -37,7 +37,7 @@ class ProjectConfig:
     # Artifacts & Output paths
     MLP_MODEL_PATH: Path = field(init=False)
     BASELINES_PATH: Path = field(init=False)
-    SCALER_PATH: Path = field(init=False)
+    PREPROCESSOR_PATH: Path = field(init=False)
     METRICS_SUMMARY_CSV: Path = field(init=False)
     ACTUAL_VS_PRED_PLOT: Path = field(init=False)
     LOSS_CURVE_PLOT: Path = field(init=False)
@@ -64,19 +64,21 @@ class ProjectConfig:
     N_STRATIFY_BINS_TRAIN: int = 10
     N_STRATIFY_BINS_TEMP: int = 5
 
-    # Cột mục tiêu mặc định
-    TARGET_COLUMN: str = "MEDV"  # Fallback: "median_house_value" hoặc "price"
-    
-    # Danh sách 13 đặc trưng gốc Boston Housing
-    BOSTON_FEATURE_NAMES: List[str] = field(default_factory=lambda: [
-        "CRIM", "ZN", "INDUS", "CHAS", "NOX", "RM", 
-        "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "LSTAT"
+    # Schema duy nhất: 8 numeric features + 1 categorical feature + target.
+    TARGET_COLUMN: str = "median_house_value"
+    TARGET_UNIT: str = "USD"
+    NUMERIC_FEATURE_NAMES: List[str] = field(default_factory=lambda: [
+        "longitude", "latitude", "housing_median_age", "total_rooms",
+        "total_bedrooms", "population", "households", "median_income"
+    ])
+    CATEGORICAL_FEATURE_NAMES: List[str] = field(default_factory=lambda: [
+        "ocean_proximity"
     ])
 
     # --------------------------------------------------------------------------
     # 3. SIÊU THAM SỐ MẠNG NƠ-RON MLP (THEO ĐỀ BÀI LAB 4)
     # --------------------------------------------------------------------------
-    MLP_INPUT_DIM: int = 13
+    # input_dim bắt buộc lấy từ X_train_transformed.shape[1], không cố định.
     MLP_HIDDEN_1_UNITS: int = 32
     MLP_HIDDEN_1_ACTIVATION: str = "relu"
     MLP_HIDDEN_2_UNITS: int = 16
@@ -127,7 +129,7 @@ class ProjectConfig:
         # Artifacts
         self.MLP_MODEL_PATH = self.SAVED_MODELS_DIR / "mlp_house_price_model.keras"
         self.BASELINES_PATH = self.SAVED_MODELS_DIR / "baseline_models.joblib"
-        self.SCALER_PATH = self.SAVED_MODELS_DIR / "standard_scaler.joblib"
+        self.PREPROCESSOR_PATH = self.SAVED_MODELS_DIR / "preprocessor.joblib"
         self.METRICS_SUMMARY_CSV = self.METRICS_DIR / "model_performance_summary.csv"
 
         # Figures
@@ -165,4 +167,4 @@ class ProjectConfig:
 
 # Đối tượng cấu hình dùng chung toàn dự án
 config = ProjectConfig()
-config.create_directories()
+# Chỉ gọi create_directories() tại entrypoint khi triển khai; import không ghi đĩa.
