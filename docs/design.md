@@ -1,302 +1,211 @@
-# Thiết kế bài thực hành dự đoán giá nhà theo 5W1H
+# Thiết kế bài lab dự đoán giá nhà theo 5W1H
 
-## 1. Yêu cầu của bài thực hành
+Trong bài lab này, nhóm dự kiến thực hiện bài toán dự đoán giá nhà trung vị dựa trên tập dữ liệu California Housing. Mục tiêu chính là thực hành các bước cơ bản của một bài toán Machine Learning dạng hồi quy chuẩn mực: chia dữ liệu độc lập ngay từ đầu, tiền xử lý và chuẩn hóa trên tập Train, huấn luyện mô hình mạng nơ-ron nhiều tầng (MLP) cùng ba mô hình baseline truyền thống để so sánh đối chứng.
 
-Tài liệu dựa trên [Practice exercise 4.pdf](<Practice exercise 4.pdf>). Bài thực hành yêu cầu xây dựng MLP để dự đoán giá nhà, sau đó so sánh với Linear Regression, Decision Tree và Random Forest. Dữ liệu đầu vào nằm trong `data/raw/housing.csv`.
+Tài liệu trình bày phương án thiết kế ban đầu trước khi triển khai, gồm phạm vi, cách tổ chức công việc, phương pháp thử nghiệm và tiêu chí đánh giá. Nhóm thống nhất các lựa chọn này trước khi bắt đầu thực hành và sẽ dựa vào kết quả đo đạc thực tế sau khi chạy xong để đưa ra nhận xét khách quan.
 
-| Phần trong đề | Yêu cầu | Cách thực hiện |
-| --- | --- | --- |
-| Task 1 | Import các thư viện cần thiết | Khai báo thư viện trong `requirements.txt`; viết các hàm dùng chung trong `src/` |
-| Task 2 | Chuẩn bị dữ liệu, tách X/y và chuẩn hóa | Chia dữ liệu trước, sau đó điền giá trị thiếu, mã hóa biến phân loại và chuẩn hóa biến số |
-| Task 3 | Xây dựng mạng Sequential với các lớp Dense | Dùng kiến trúc `32 ReLU → 16 ReLU → 1 linear`, Adam và MSE loss |
-| Task 4 | Huấn luyện và theo dõi MSE, MAE | Chạy 100 epochs với batch size 32; theo dõi train và validation |
-| Task 5 | Đánh giá và so sánh giá thực tế với dự đoán | Tính chỉ số trên test, vẽ biểu đồ và phân tích sai số |
-| Task 6 | So sánh MLP với ba mô hình regression | Huấn luyện baseline trước MLP và đánh giá cả bốn mô hình trên cùng test |
+## 1. What
 
-### Những điểm điều chỉnh so với đề
+### Bài toán và phạm vi
 
-Đề sử dụng Boston Housing và minh họa cách chia train/test theo tỷ lệ 80/20. Thiết kế này chọn California Housing và chia train/validation/test theo tỷ lệ 80/10/10. Tập validation riêng giúp theo dõi quá trình huấn luyện mà vẫn giữ test cho lần đánh giá cuối.
+Nhóm chọn bài toán **hồi quy có giám sát (Supervised Regression)**. Với các thông tin đặc trưng của một khu dân cư (vị trí địa lý, độ tuổi nhà, quy mô phòng, dân số, thu nhập trung vị), mô hình cần dự đoán một giá trị liên tục:
 
-| Nội dung | Trong đề | Lựa chọn thiết kế |
-| --- | --- | --- |
-| Dữ liệu | Boston Housing | California Housing từ CSV trên máy |
-| Chia tập | Train/test 80/20, seed 42 | Train/validation/test 80/10/10, seed 42 |
-| Validation | Ví dụ dùng test làm validation | Dùng tập validation riêng |
-| Chỉ số | MSE, MAE; Task 6 có thêm R² | MSE, MAE, R² và RMSE để diễn giải sai số theo USD |
-| Learning rate | Chỉ nêu Adam | Chọn `0.001` |
-| Baseline | Không quy định độ sâu hoặc số cây | Decision Tree dùng `max_depth=5`; Random Forest dùng `n_estimators=100` |
+- Biến mục tiêu (`target`): `median_house_value` (giá trị nhà trung vị theo đơn vị USD).
 
-Báo cáo cần giải thích các điều chỉnh này. Đề không quy định mức MAE hoặc R² phải đạt, nên kết luận cần dựa trên kết quả thực nghiệm và so sánh giữa các mô hình.
+Dữ liệu đầu vào là file CSV cục bộ tại đường dẫn `data/raw/housing.csv`. Nhóm kiểm tra nguồn dữ liệu, các cột đặc trưng và kiểu dữ liệu trước khi sử dụng. Vì biến mục tiêu biểu thị mức giá trung vị của toàn khu vực chứ không phải giá của từng căn nhà riêng lẻ, các đánh giá chỉ có ý nghĩa trong phạm vi phân phối của bộ dữ liệu này.
 
-## 2. What — Bài toán cần giải quyết là gì?
+Phạm vi thực hiện gồm: chia tập dữ liệu độc lập ngay từ đầu theo tỷ lệ 80/10/10 (Train/Validation/Test), sau đó tiền xử lý chỉ học thống kê trên Train, tạo ma trận đặc trưng số, huấn luyện ba mô hình baseline (Linear Regression, Decision Tree, Random Forest), huấn luyện mạng MLP theo dõi qua tập Validation riêng, và cuối cùng đánh giá độc lập một lần duy nhất trên tập Test. Toàn bộ bài thực hành được thực hiện trên môi trường máy cá nhân phục vụ mục đích học tập.
 
-Bài toán là dự đoán `median_house_value` từ chín đặc trưng của California Housing. Đây là bài toán **regression**, có đầu ra là một giá trị liên tục theo USD. Target biểu thị giá nhà trung vị của một khu vực, không phải giá giao dịch của từng căn nhà.
+### Dữ liệu đầu vào và kết quả đầu ra dự kiến
 
-### Dữ liệu đầu vào
+| Bước | Đầu vào | Đầu ra dự kiến |
+| :--- | :--- | :--- |
+| 1. Đọc và kiểm tra dữ liệu | File `data/raw/housing.csv` gồm 9 đặc trưng và cột giá nhà | Bảng dữ liệu thô đã xác thực đầy đủ các cột và kiểu dữ liệu |
+| 2. Chia tập độc lập ngay từ đầu (Early Split) | Dữ liệu thô ban đầu | Ba tập dữ liệu thô độc lập: Train (80%), Validation (10%) và Test (10%) |
+| 3. Tiền xử lý đặc trưng (chỉ fit trên Train) | Dữ liệu thô tập Train (Val và Test chỉ dùng phép biến đổi) | Ma trận đặc trưng số đã chuẩn hóa và bộ biến đổi đã fit |
+| 4. Huấn luyện các mô hình baseline | Tập Train và Validation | Ba mô hình Linear Regression, Decision Tree và Random Forest đã huấn luyện |
+| 5. Huấn luyện mạng MLP | Tập Train và tập Validation riêng | Mô hình MLP cùng lịch sử suy giảm hàm mất mát qua 100 epochs |
+| 6. Đánh giá đối chứng độc lập | Bốn mô hình đã huấn luyện và tập Test | Bảng so sánh 4 chỉ số (MSE, RMSE, MAE, R²) và các biểu đồ phân tích |
+| 7. Chạy thử nghiệm dự đoán | Một vài mẫu nhà từ tập Test | Mức giá dự đoán theo USD để quan sát sai số |
+| 8. Lưu kết quả và mô hình | Mô hình và bộ biến đổi đã fit | Các file mô hình lưu trong thư mục `results/saved_models/` |
 
-| Loại dữ liệu | Các cột |
-| --- | --- |
-| Tám biến số | `longitude`, `latitude`, `housing_median_age`, `total_rooms`, `total_bedrooms`, `population`, `households`, `median_income` |
-| Một biến phân loại | `ocean_proximity` |
-| Giá trị cần dự đoán | `median_house_value` |
+## 2. Why
 
-Kiểm tra trực tiếp CSV cho thấy dữ liệu có 20.640 dòng. Cột `total_bedrooms` thiếu 207 giá trị; `ocean_proximity` có năm nhóm, trong đó `ISLAND` chỉ có năm dòng. Target lớn nhất là 500001 USD, xuất hiện ở 965 dòng. Cần xem xét các đặc điểm này khi tiền xử lý và phân tích sai số; nếu thay CSV thì kiểm tra lại thống kê.
+Nhóm chọn bài toán dự đoán giá nhà vì đây là bài toán hồi quy kinh điển, giúp các thành viên trong nhóm nắm vững sự khác biệt giữa bài toán phân loại và bài toán dự đoán giá trị liên tục. Qua bài lab, nhóm muốn rèn luyện kỹ năng xử lý dữ liệu dạng bảng, hiểu cách mạng nơ-ron học quan hệ phi tuyến và so sánh hiệu quả thực tế giữa mạng MLP với các mô hình học máy truyền thống.
 
-### Kết quả cần có
+Nhóm bắt đầu từ các mô hình baseline đơn giản trước khi đi vào mạng nơ-ron để có mốc đối chiếu rõ ràng.
 
-- Ba file CSV chứa train, validation và test, bao gồm cả target.
-- Bộ tiền xử lý đã fit trên train, ba baseline và MLP đã huấn luyện.
-- Bảng MSE, RMSE, MAE và R² của bốn mô hình trên cùng test.
-- Biểu đồ quá trình học, giá thực tế so với dự đoán và so sánh mô hình.
-- Notebook giải thích cách làm, nhận xét kết quả và minh họa dự đoán với ba mẫu test.
+| Lựa chọn dự kiến | Lý do chọn | Hạn chế |
+| :--- | :--- | :--- |
+| Chia tập độc lập trước mọi bước tiền xử lý | Tuân thủ nguyên tắc chống rò rỉ dữ liệu (Data Leakage) từ Test sang Train | Cần quản lý chặt chẽ bộ tiền xử lý chỉ được học từ Train |
+| Giữ nguyên giá trị mục tiêu theo đơn vị USD | Giúp các chỉ số MAE và RMSE phản ánh trực tiếp số tiền sai lệch dễ hiểu | Thang giá trị lớn (lên tới 500.000 USD) có thể khiến hàm mất mát ban đầu rất lớn |
+| Huấn luyện Linear Regression làm baseline đầu tiên | Đơn giản, tính toán nhanh, hệ số trọng số giúp hiểu hướng tác động của đặc trưng | Chỉ mô hình hóa được quan hệ tuyến tính |
+| Huấn luyện Decision Tree và Random Forest | Học được quan hệ phi tuyến dạng bậc thang và tương tác phức tạp giữa các đặc trưng | Decision Tree dễ bị quá khớp; Random Forest tốn tài nguyên tính toán hơn |
+| Mạng Keras MLP (32 ReLU &rarr; 16 ReLU &rarr; 1 Linear) | Đúng yêu cầu cấu trúc của đề bài; có khả năng học quan hệ phi tuyến mượt mà | Nhạy cảm với thang đo đặc trưng và tốc độ học |
+| Tách riêng tập Validation độc lập khỏi tập Test | Có tập dữ liệu riêng để theo dõi quá trình học 100 epochs mà không làm lộ tập Test | Giảm bớt một phần lượng mẫu dùng cho huấn luyện |
+| Theo dõi đồng thời MSE, RMSE, MAE và R² | Có cái nhìn đa chiều: MAE đo sai số trung bình, RMSE nhạy với sai số lớn, R² đo mức độ giải thích | Các chỉ số có thể cho thứ hạng mô hình khác nhau nếu có ngoại lai lớn |
+| Lưu mô hình kèm theo đúng bộ tiền xử lý | Đảm bảo khi nạp lại để dự đoán dữ liệu mới thì các bước biến đổi hoàn toàn đồng nhất | Cần kiểm tra kỹ kích thước vector sau khi nạp |
 
-Target được giữ nguyên đơn vị USD. Feature engineering là phần mở rộng, chưa dùng trong quy trình chính. Phạm vi bài tập tập trung vào dữ liệu, mô hình và đánh giá; không bao gồm xây dựng web/API, triển khai lên cloud, stacking hoặc bổ sung các thư viện boosting.
+Nhóm ưu tiên cách tiếp cận có thể giải thích được bản chất toán học của từng thuật toán. Mỗi mô hình được chọn đều có vai trò cụ thể trong bài thực hành để các thành viên cùng hiểu và trình bày được trong báo cáo.
 
-## 3. Why — Vì sao chọn cách làm này?
+## 3. Who
 
-Mục tiêu là hiểu cách chuẩn bị dữ liệu, xây dựng MLP và đánh giá mô hình regression. Các baseline cung cấp kết quả tham chiếu để xem MLP có mang lại cải thiện hay không.
+Bài lab phục vụ mục đích học tập môn học và hoàn thành bài tập thực hành theo yêu cầu giảng viên.
 
-| Lựa chọn | Lý do | Điểm cần lưu ý |
-| --- | --- | --- |
-| Bắt đầu bằng Linear Regression | Dễ giải thích, chạy nhanh và giúp kiểm tra toàn bộ quy trình | Có thể chưa học được quan hệ phi tuyến |
-| Tách validation khỏi test | Chọn cấu hình mà vẫn giữ test độc lập | Kết quả phụ thuộc vào cách chia; test chỉ chiếm 10% dữ liệu |
-| Chỉ fit tiền xử lý trên train | Tránh để thông tin validation/test ảnh hưởng đến mô hình | Cần xử lý nhóm phân loại chưa gặp trong train |
-| Dùng chung bộ tiền xử lý | Giúp bốn mô hình nhận cùng đầu vào | Mô hình cây không cần scaling nhưng vẫn dùng để thống nhất quy trình |
-| Giữ target theo USD | MAE và RMSE dễ diễn giải | Thang target lớn có thể khiến MLP hội tụ chậm |
-| Chia code thành module | Dễ phân công, kiểm thử và dùng lại trong notebook | Notebook và chương trình chính phải thống nhất đầu vào, đầu ra |
+| Người tham gia | Vai trò trong bài lab |
+| :--- | :--- |
+| Nhóm sinh viên thực hiện | Phân công chuẩn bị dữ liệu, xây dựng pipeline tiền xử lý, huấn luyện mô hình, đánh giá và viết báo cáo |
+| Giảng viên bộ môn | Theo dõi tiến độ, kiểm tra phương pháp thiết kế và đánh giá kết quả thực hành |
+| Người thử nghiệm | Chạy thử chương trình với các mẫu dữ liệu và quan sát sai số dự đoán |
 
-Nếu baseline tốt hơn MLP, báo cáo cần nêu kết quả và phân tích nguyên nhân. Các thử nghiệm biến đổi target, đổi kiến trúc hoặc tạo thêm đặc trưng cần có kế hoạch đánh giá trên validation và được thống nhất trước khi mở rộng phạm vi.
+Nhóm phân chia công việc theo từng giai đoạn cụ thể tương ứng với các Issue và Milestone trên GitHub. Các thành viên cùng dùng chung quy ước chia tập, seed ngẫu nhiên và bộ chỉ số đánh giá để đảm bảo kết quả có thể ghép nối thành một quy trình thống nhất.
 
-## 4. Who — Ai sử dụng và ai thực hiện?
+## 4. When
 
-Tài liệu phục vụ nhóm sinh viên làm bài và giảng viên đánh giá kết quả. Công việc được chia theo vai trò để các phần có thể ghép lại thành một quy trình thống nhất.
+Nhóm dự kiến thực hiện bài lab theo từng bước tuần tự, hoàn thành và nghiệm thu phần dữ liệu trước khi huấn luyện mô hình, và chỉ mở tập Test khi toàn bộ việc huấn luyện đã xong.
 
-| Vai trò | Công việc | Kết quả bàn giao |
-| --- | --- | --- |
-| Nhóm dữ liệu | Quản lý cấu hình, đọc CSV, chia tập, tiền xử lý và viết notebook 01; thử thêm đặc trưng khi cần | Các tập dữ liệu, bộ tiền xử lý và kết quả kiểm tra |
-| Nhóm mô hình | Huấn luyện baseline, MLP, lưu/nạp mô hình và viết notebook 02 | Mô hình, bộ tiền xử lý tương ứng và lịch sử huấn luyện |
-| Nhóm đánh giá | Tính chỉ số, vẽ biểu đồ, ghi log, điều phối chương trình và viết notebook 03 | Bảng so sánh, biểu đồ, nhận xét và ví dụ dự đoán |
-| Cả nhóm | Ghép các phần và kiểm thử trong `tests/test_pipeline.py` | Quy trình chạy đầy đủ từ dữ liệu đầu vào đến dự đoán |
+| Bước | Nội dung công việc | Kết quả cần đạt |
+| :---: | :--- | :--- |
+| 1 | Xác định phạm vi bài toán, kiểm tra dữ liệu thô và thống nhất các chỉ số đánh giá | Tài liệu thiết kế tổng quan và thiết kế thuật toán |
+| 2 | Chia dữ liệu thành ba tập Train, Validation, Test theo tỷ lệ 80/10/10 với seed cố định | Ba tập dữ liệu thô độc lập, tập Test được niêm phong |
+| 3 | Xây dựng bộ tiền xử lý (điền khuyết, mã hóa, chuẩn hóa) chỉ học trên tập Train | Bộ tiền xử lý đã fit và ma trận đặc trưng số |
+| 4 | Huấn luyện ba mô hình baseline (Linear Regression, Decision Tree, Random Forest) | Ba mô hình baseline hoàn chỉnh làm mốc đối chứng |
+| 5 | Xây dựng và huấn luyện mạng MLP 100 epochs, theo dõi đường học trên tập Validation | Mô hình MLP, lịch sử loss và đồ thị quá trình học |
+| 6 | Đánh giá cả bốn mô hình trên tập Test độc lập, lập bảng so sánh và phân tích sai số | Bảng 4 chỉ số, các biểu đồ trực quan hóa và nhận xét |
+| 7 | Tích hợp toàn tuyến qua chương trình điều phối chính và hoàn tất báo cáo | Toàn bộ pipeline chạy thông suốt và tài liệu tổng kết |
 
-Notebook gọi các hàm trong `src/` để dùng chung cách xử lý. Mô hình cần đi kèm đúng bộ tiền xử lý của lần huấn luyện đó; dùng nhầm bộ tiền xử lý có thể làm sai dự đoán dù số cột vẫn khớp.
+Nếu kết quả đo đạc trên tập Test cho thấy mô hình chưa tốt, nhóm sẽ ghi nhận trung thực hạn chế đó trong phần thảo luận thay vì dùng kết quả Test để chỉnh sửa lại tham số mô hình.
 
-## 5. Where — Chương trình chạy ở đâu và dữ liệu được lưu thế nào?
+## 5. Where
 
-Chương trình chạy trên máy bằng Python. Có thể chạy toàn bộ quy trình qua `main.py` hoặc chạy các notebook theo thứ tự 01 → 02 → 03. Dữ liệu được đọc từ `data/raw/housing.csv`; chương trình cần báo lỗi nếu thiếu file hoặc các cột không đúng yêu cầu.
+Bài lab được thực hiện trên môi trường máy tính cá nhân sử dụng Python. Các thành viên sử dụng chung cấu hình môi trường và seed ngẫu nhiên để đảm bảo tính tái lập của kết quả.
 
-`src/config.py` quản lý đường dẫn tính từ thư mục gốc. Các thư mục kết quả được tạo khi chạy chương trình, không tạo chỉ vì import config. Trước khi triển khai, cần thống nhất thư viện và phiên bản cho code, notebook và kiểm thử.
+Không gian làm việc của dự án được tổ chức như sau:
 
-### Cấu trúc thư mục dự kiến (target structure)
+| Thư mục / Vị trí | Trách nhiệm chính |
+| :--- | :--- |
+| `src/data/` | Đọc dữ liệu, chia tập Train/Val/Test và các bước tiền xử lý |
+| `src/models/` | Xây dựng các mô hình baseline, mạng MLP và lưu trữ mô hình |
+| `src/evaluation/` | Tính toán 4 chỉ số đo lường và vẽ các biểu đồ đánh giá |
+| `data/raw/`, `data/processed/` | Lưu trữ file CSV gốc và các tập dữ liệu thô sau khi chia |
+| `docs/` | Tài liệu thiết kế bài lab và tài liệu giải thích thuật toán |
+| `notebooks/` | Các notebook thực hành tuần tự từ khám phá đến so sánh mô hình |
+| `results/` | Lưu trữ các biểu đồ, bảng tổng hợp chỉ số và file mô hình đã lưu |
 
-Mỗi thư mục phụ trách một phần công việc. Các mục có dấu `[generated]` là file hoặc kết quả được sinh khi chạy chương trình.
+## 6. How
 
-```text
-Lab_4 Predicting House Prices/
-├── main.py                             # Chạy lần lượt các bước và minh họa dự đoán
-├── requirements.txt                    # Danh sách thư viện cần cài đặt
-├── README.md                           # Giới thiệu bài toán và hướng dẫn chạy
-├── AGENTS.md                           # Quy tắc làm việc trong dự án
-├── docs/
-│   ├── design.md                       # Thiết kế theo 5W1H và cấu trúc thư mục
-│   └── Practice exercise 4.pdf          # Đề bài thực hành
-├── data/
-│   ├── raw/housing.csv                 # Dữ liệu California Housing đầu vào
-│   └── processed/
-│       ├── train.csv                   # [generated] Dữ liệu train và target, chưa tiền xử lý
-│       ├── val.csv                     # [generated] Dữ liệu validation và target, chưa tiền xử lý
-│       └── test.csv                    # [generated] Dữ liệu test và target, chưa tiền xử lý
-├── src/
-│   ├── __init__.py                     # Khai báo package mã nguồn
-│   ├── config.py                       # Quản lý đường dẫn, cột dữ liệu và tham số mô hình
-│   ├── data/
-│   │   ├── __init__.py                 # Khai báo package xử lý dữ liệu
-│   │   ├── loader.py                   # Đọc CSV, kiểm tra các cột và thống kê dữ liệu
-│   │   └── preprocessing.py            # Chia tập, điền giá trị thiếu, mã hóa, chuẩn hóa và lưu CSV
-│   ├── features/
-│   │   ├── __init__.py                 # Khai báo package tạo đặc trưng
-│   │   └── feature_engineering.py      # Tạo đặc trưng bổ sung; chưa bật trong quy trình chính
-│   ├── models/
-│   │   ├── __init__.py                 # Khai báo package mô hình
-│   │   ├── baseline_models.py          # Huấn luyện và dự đoán bằng Linear Regression, Decision Tree, Random Forest
-│   │   ├── mlp_model.py                # Xây dựng, huấn luyện, đánh giá và dự đoán bằng MLP
-│   │   └── persistence.py              # Lưu và nạp lại các mô hình cùng bộ tiền xử lý
-│   ├── evaluation/
-│   │   ├── __init__.py                 # Khai báo package đánh giá
-│   │   ├── metrics.py                  # Tính MSE, RMSE, MAE, R² và tổng hợp bảng so sánh
-│   │   └── visualization.py            # Vẽ đường học, giá thực tế/dự đoán, phần dư và so sánh mô hình
-│   └── utils/
-│       ├── __init__.py                 # Khai báo package tiện ích dùng chung
-│       └── logger.py                   # Thiết lập log và ghi tiến trình từng bước
-├── notebooks/
-│   ├── README.md                       # Hướng dẫn chạy các notebook theo thứ tự
-│   ├── 01_eda_and_preprocessing.ipynb   # Khám phá dữ liệu train, chia tập và tiền xử lý
-│   ├── 02_mlp_model_training.ipynb      # Huấn luyện baseline trước MLP, theo dõi và lưu mô hình
-│   └── 03_baseline_and_comparison.ipynb # Nạp mô hình, đánh giá test và phân tích kết quả
-├── tests/
-│   ├── __init__.py                     # Khai báo package kiểm thử
-│   ├── test_data.py                    # Kiểm tra đọc dữ liệu, chia tập và tiền xử lý
-│   ├── test_features.py                # Kiểm tra cách tạo đặc trưng bổ sung
-│   ├── test_models.py                  # Kiểm tra baseline, MLP và kích thước dự đoán
-│   ├── test_evaluation.py              # Kiểm tra cách tính các chỉ số đánh giá
-│   └── test_pipeline.py                # Kiểm tra toàn bộ quy trình và dự đoán sau khi lưu/nạp
-├── results/
-│   ├── saved_models/
-│   │   ├── preprocessor.joblib         # [generated] Bộ tiền xử lý đã fit trên train
-│   │   ├── baseline_models.joblib      # [generated] Ba mô hình baseline đã huấn luyện
-│   │   └── mlp_house_price_model.keras # [generated] Mô hình MLP đã huấn luyện
-│   ├── metrics/
-│   │   └── model_performance_summary.csv # [generated] Bảng chỉ số của bốn mô hình trên test
-│   └── figures/                        # [generated] Biểu đồ huấn luyện và đánh giá
-└── logs/
-    └── training.log                    # [generated] Nhật ký chạy và thông tin lỗi
-```
-
-`main.py` và các notebook gọi các module xử lý dữ liệu, huấn luyện và đánh giá. Các module dùng chung cấu hình, nhưng mỗi module chỉ thực hiện phần việc của mình: đọc dữ liệu, huấn luyện, đánh giá hoặc lưu kết quả.
-
-## 6. When — Các bước được thực hiện theo thứ tự nào?
-
-Mỗi giai đoạn cần đạt điều kiện trong bảng trước khi chuyển sang bước tiếp theo.
-
-| Bước | Công việc | Điều kiện hoàn thành |
-| --- | --- | --- |
-| 1 | Thống nhất dữ liệu, chỉ số đánh giá, môi trường và file kết quả | Các nhóm hiểu rõ đầu vào, đầu ra và cách chạy |
-| 2 | Đọc dữ liệu, chia 80/10/10 và khám phá train | Đúng cột, X/y khớp từng dòng, không trùng mẫu giữa các tập và chia lại được với cùng seed |
-| 3 | Tiền xử lý và lưu dữ liệu | Chỉ fit trên train; xử lý được giá trị thiếu, nhóm mới và thứ tự cột |
-| 4 | Huấn luyện Linear Regression, Decision Tree và Random Forest | Cả ba mô hình trả dự đoán đúng kích thước |
-| 5 | Huấn luyện MLP với validation riêng | Có lịch sử huấn luyện, kiểm tra overfitting và dự đoán không chứa NaN hoặc vô cực |
-| 6 | Chọn cấu hình bằng validation, lưu và nạp lại mô hình | Kết quả trước và sau khi lưu khớp nhau trong sai số cho phép |
-| 7 | Đánh giá trên test | Có bảng so sánh bốn mô hình, biểu đồ và nhận xét |
-| 8 | Hoàn thiện notebook và báo cáo | Chạy được theo thứ tự, giải thích lựa chọn thiết kế và giới hạn kết quả |
-
-Baseline được huấn luyện trước MLP trong notebook 02. Notebook 03 nạp mô hình để đánh giá và so sánh trên test.
-
-## 7. How — Xử lý dữ liệu, huấn luyện và đánh giá mô hình như thế nào?
-
-### 7.1. Quy trình chung
+### 6.1. Luồng dữ liệu dự kiến
 
 ```mermaid
 flowchart TD
-    A[Đọc CSV và kiểm tra các cột] --> B[Tách X/y và chia 80/10/10]
-    B --> C[Khám phá dữ liệu train]
-    B --> D[Fit bộ tiền xử lý trên train]
-    D --> E[Biến đổi train, validation và test]
-    E --> F[Huấn luyện ba baseline]
-    F --> G[Huấn luyện MLP và theo dõi validation]
-    G --> H[Chọn cấu hình bằng validation]
-    H --> I[Đánh giá bốn mô hình trên test]
-    I --> J[Lập bảng kết quả, vẽ biểu đồ và báo cáo]
-    D --> K[Lưu bộ tiền xử lý]
-    H --> L[Lưu mô hình]
-    K --> M[Tiền xử lý dữ liệu đầu vào rồi dự đoán]
-    L --> M
+    A["Nạp dữ liệu thô: data/raw/housing.csv"] --> B["Chia tập độc lập TRƯỚC: Train (80%) / Val (10%) / Test (10%)"]
+    B --> C["Tập Train thô: Học thống kê median, mean, std và one-hot"]
+    B --> D["Tập Validation thô: Chỉ áp dụng phép biến đổi đã học từ Train"]
+    B --> E["Tập Test thô: Niêm phong cách ly hoàn toàn"]
+    C --> F["Huấn luyện 3 mô hình Baseline: Linear, Tree, Forest"]
+    C --> G["Huấn luyện mạng MLP 100 epochs"]
+    D --> G
+    F --> H["Lưu các mô hình đã huấn luyện"]
+    G --> H
+    H --> I["Đánh giá một lần duy nhất trên tập Test"]
+    E --> I
+    I --> J["Xuất bảng 4 chỉ số và vẽ biểu đồ so sánh thực tế vs dự đoán"]
 ```
 
-Validation và test được biến đổi bằng bộ tiền xử lý đã fit trên train. Kết quả test chỉ dùng để đánh giá cuối, không dùng để chọn đặc trưng, điều chỉnh tham số hoặc quyết định dừng huấn luyện.
+### 6.2. Dữ liệu và nguyên tắc chống rò rỉ (Chia tập trước, Tiền xử lý sau)
 
-### 7.2. Chuẩn bị và xử lý dữ liệu
+1. **Nguyên tắc chia tập trước:** Dữ liệu thô được chia ngay từ bước đầu tiên thành Train (80%), Validation (10%) và Test (10%) với `seed = 42`. Tập Test được giữ nguyên vẹn và niêm phong cách ly để phục vụ bước đánh giá cuối cùng.
+2. **Học thống kê chỉ trên Train:** Toàn bộ giá trị trung vị để điền khuyết (`total_bedrooms`), danh sách nhóm phân loại để mã hóa (`ocean_proximity`), giá trị trung bình (`mean`) và độ lệch chuẩn (`std`) để chuẩn hóa Z-score CHỈ ĐƯỢC TÍNH TOÁN TRÊN TẬP TRAIN.
+3. **Validation và Test chỉ áp dụng phép biến đổi:** Hai tập này chỉ đi qua các bước biến đổi bằng tham số đã học từ Train, tuyệt đối không tính lại trung bình hay độ lệch chuẩn trên dữ liệu của chúng.
+4. **Bảo toàn đơn vị giá trị mục tiêu:** Cột `median_house_value` được giữ nguyên đơn vị USD trong toàn bộ quá trình, giúp việc tính sai số tuyệt đối có ý nghĩa thực tế rõ ràng.
 
-| Hàm | Đầu vào | Kết quả và yêu cầu |
-| --- | --- | --- |
-| `load_housing_data(filepath=None)` | CSV có các cột theo yêu cầu | Trả `(df, target_col)`; giữ giá trị thiếu ở đặc trưng để xử lý sau, báo lỗi nếu target không hợp lệ |
-| `split_data_8_1_1(X, y, ...)` | DataFrame X và Series y chưa xử lý | Trả `X_train, X_val, X_test, y_train, y_val, y_test`; giữ index để đối chiếu từng mẫu |
-| `fit_preprocessor(X_train)` | Chín đặc trưng của train, không có target | Trả `ColumnTransformer` đã fit; báo lỗi nếu một cột train thiếu toàn bộ giá trị |
-| `transform_features(preprocessor, X)` | Dữ liệu có đủ các cột đặc trưng | Trả dense ndarray `(N, D)`, giữ số dòng, không chứa NaN hoặc vô cực và không fit lại |
-| `save_processed_splits(...)` | Sáu tập X/y chưa tiền xử lý | Lưu ba CSV gồm đặc trưng và target, giữ NaN, dùng `index=False` |
+### 6.3. Chiến lược mô hình
 
-Dữ liệu được chia thành train 80% và tập tạm 20%, rồi chia đôi tập tạm thành validation và test. Cả hai lần dùng seed 42. Với 20.640 mẫu, số dòng tương ứng là 16.512, 2.064 và 2.064.
+Nhóm dự kiến xây dựng 4 mô hình trên cùng một bộ dữ liệu đầu vào đã tiền xử lý:
 
-Nếu chia phân tầng theo giá nhà, dùng `qcut` để nhóm target theo phân vị và `duplicates='drop'` để xử lý ranh giới trùng nhau. Kiểm tra số mẫu của mỗi nhóm trước khi chia. Nếu không thể chia, chương trình báo lỗi và hướng dẫn giảm số nhóm hoặc chọn `stratify=False`, thay vì tự đổi cách chia. Kiểm tra các tập không trùng mẫu trước khi bỏ index để lưu CSV.
+- **Baseline 1 — Linear Regression:** Mô hình hồi quy tuyến tính cổ điển, tính toán nhanh và cung cấp mốc tham chiếu cơ bản nhất.
+- **Baseline 2 — Decision Tree Regression:** Cây quyết định có giới hạn độ sâu để nắm bắt quan hệ phi tuyến dạng phân vùng không gian.
+- **Baseline 3 — Random Forest Regression:** Rừng ngẫu nhiên gồm 100 cây để giảm thiểu phương sai và nâng cao tính ổn định so với cây đơn lẻ.
+- **Mô hình trọng tâm — Multilayer Perceptron (MLP):** Mạng nơ-ron truyền thẳng 2 lớp ẩn (32 ReLU &rarr; 16 ReLU &rarr; 1 Linear), tối ưu bằng thuật toán Adam với hàm mất mát MSE và theo dõi MAE qua 100 epochs.
 
-Bộ tiền xử lý gồm hai nhánh:
+### 6.4. Metrics và quy tắc đánh giá
 
-- Biến số: `SimpleImputer(strategy='median') → StandardScaler`.
-- Biến phân loại: `SimpleImputer(strategy='most_frequent') → OneHotEncoder(handle_unknown='ignore', sparse_output=False, drop=None)`.
+Để đánh giá toàn diện khả năng dự đoán giá nhà, nhóm theo dõi 4 chỉ số trên cùng tập Test:
 
-Các cột được chọn theo tên và thứ tự trong config. Đầu vào có thể đổi thứ tự cột, nhưng thiếu hoặc thừa cột thì cần báo lỗi. Nhóm phân loại chưa gặp trong train được mã hóa thành vector toàn 0 ở nhánh one-hot, nên số chiều đầu ra không đổi. Không dùng `get_dummies` riêng cho từng tập vì có thể tạo ra các cột khác nhau.
+- **Mean Absolute Error (MAE):** Sai số tuyệt đối trung bình (đơn vị USD), phản ánh mức chênh lệch trung bình giữa giá dự đoán và giá thật.
+- **Root Mean Squared Error (RMSE):** Căn bậc hai sai số bình phương trung bình (đơn vị USD), phạt nặng hơn đối với các mẫu có sai số lớn.
+- **Mean Squared Error (MSE):** Sai số bình phương trung bình (đơn vị USD&sup2;), là hàm mất mát tối ưu trực tiếp của MLP và Linear Regression.
+- **R-squared ($R^2$ Score):** Hệ số xác định (không đơn vị), đo tỷ lệ phương sai của giá nhà được mô hình giải thích được (càng gần 1 càng tốt).
 
-Sau scaling, biến số không hằng có độ lệch chuẩn xấp xỉ 1. Điều này không áp dụng cho cột hằng hoặc one-hot. Việc khám phá dữ liệu để chọn đặc trưng chỉ dùng train. Nếu bổ sung `HousingFeatureEngineer`, cần lưu chung với bộ tiền xử lý, kiểm tra phép chia cho 0 và miền xác định của log, rồi đánh giá bằng validation.
+**Quy tắc nhận xét:** Nhóm sẽ dựa vào MAE và RMSE để đánh giá mức độ sai lệch theo tiền tệ thực tế, kết hợp $R^2$ để đánh giá khả năng mô hình hóa tổng thể. Nếu mô hình cây cho kết quả tốt hơn mạng MLP, nhóm sẽ phân tích nguyên nhân dựa trên đặc thù của dữ liệu dạng bảng thay vì thiên vị cho mạng nơ-ron.
 
-### 7.3. Huấn luyện các mô hình
+### 6.5. Kế hoạch kiểm tra tính đúng đắn
 
-| Mô hình | Cấu hình | Điểm cần xem xét |
-| --- | --- | --- |
-| Linear Regression | `fit_intercept=True` | Dễ giải thích nhưng có thể chưa học được quan hệ phi tuyến. One-hot đầy đủ cùng intercept có thể làm hệ số không duy nhất, nên cần thận trọng khi diễn giải |
-| Decision Tree Regressor | `max_depth=5`, seed 42 | Học được ngưỡng và tương tác; cây quá nông dễ underfit, quá sâu dễ overfit |
-| Random Forest Regressor | `n_estimators=100`, seed 42 | Kết hợp nhiều cây để học quan hệ phi tuyến; tốn tài nguyên và khó giải thích hơn một cây |
-| MLP Keras | `D → 32 ReLU → 16 ReLU → 1 linear` | Nhạy với scaling, khởi tạo trọng số và thang target; cần theo dõi quá trình học |
+- **Dữ liệu:** Kiểm tra số lượng dòng và cột được bảo toàn sau khi chia tập; kiểm tra không có mẫu nào trùng lặp giữa các tập; kiểm tra cùng một seed luôn cho kết quả chia giống nhau.
+- **Bộ tiền xử lý:** Kiểm tra ma trận sau tiền xử lý không còn giá trị NaN; kiểm tra số cột cố định khi áp dụng cho dữ liệu mới.
+- **Mô hình:** Kiểm tra các giá trị dự đoán phải là số thực hữu hạn (không chứa NaN hoặc vô cực); kiểm tra đồ thị đường học của MLP để xác nhận hàm mất mát giảm dần qua các epochs.
+- **Lưu và nạp:** Kiểm tra mô hình sau khi lưu ra file và nạp lại phải cho kết quả dự đoán hoàn toàn trùng khớp với lúc vừa huấn luyện.
 
-MLP sử dụng Adam với learning rate 0.001, MSE loss và MAE để theo dõi huấn luyện. Mô hình chạy 100 epochs với batch size 32. Số chiều đầu vào được lấy từ `X_train_transformed.shape[1]`, không gán cố định.
+### 6.6. Các trường hợp dễ gặp lỗi và giới hạn
 
-Hàm `train_mlp_model` nhận validation riêng và trả mô hình cùng lịch sử huấn luyện. Hàm `predict_mlp` trả vector `(N,)`, kể cả khi chỉ dự đoán một mẫu (`N=1`).
+Nhóm lưu ý một số đặc điểm đặc thù của bộ dữ liệu California Housing có thể ảnh hưởng đến kết quả:
 
-Bốn mô hình dùng cùng train và bộ tiền xử lý. So sánh train/validation giúp nhận biết underfitting, overfitting hoặc mô hình chưa hội tụ. Cần ghi lại seed, cấu hình và môi trường để có thể lặp lại thí nghiệm; TensorFlow vẫn có thể cho sai khác giữa các phần cứng.
+- **Hiện tượng trần giá (Target Capping):** Có 965 dòng dữ liệu mang giá trị đúng 500.001 USD do bị làm tròn trần trong quá trình thu thập gốc. Mô hình có thể dự đoán dưới mức này ở các căn nhà thực tế có giá cao hơn. Nhóm giữ nguyên các mẫu này và sẽ phân tích hiện tượng này trong phần nhận xét.
+- **Nhóm phân loại rất hiếm:** Nhóm vị trí `ISLAND` chỉ có 5 dòng trong toàn bộ dữ liệu. Khi chia tập ngẫu nhiên, tập Train có thể chứa rất ít hoặc không chứa nhóm này. Bộ mã hóa cần có cơ chế xử lý giá trị chưa thấy để tránh phát sinh lỗi.
+- **Ngoại suy giá trị âm:** Mạng MLP và Linear Regression có thể dự đoán ra giá trị âm đối với các căn nhà ở vùng đặc trưng cực đoan nếu không được kiểm soát. Nhóm sẽ ghi nhận các trường hợp này trong phần phân tích phần dư.
 
-### 7.4. Đánh giá kết quả
+## 7. Cấu trúc dự án dự kiến
 
-Với `N` mẫu và sai số `e_i = y_i - y_pred_i`, các chỉ số được tính như sau:
+Nhóm tổ chức cấu trúc thư mục rõ ràng theo từng phân hệ để các thành viên dễ phân công và quản lý mã nguồn:
 
-| Chỉ số | Công thức | Ý nghĩa |
-| --- | --- | --- |
-| MSE | `sum(e_i²) / N` | Đơn vị USD²; càng thấp càng tốt, nhạy với sai số lớn |
-| RMSE | `sqrt(MSE)` | Đơn vị USD; càng thấp càng tốt |
-| MAE | `sum(abs(e_i)) / N` | Sai số tuyệt đối trung bình theo USD; càng thấp càng tốt |
-| R² | `1 - sum(e_i²) / sum((y_i - mean(y))²)` | Không có đơn vị; càng cao càng tốt và có thể âm |
+| Tiêu chí | Cách áp dụng dự kiến | Mục đích |
+| :--- | :--- | :--- |
+| Chia theo trách nhiệm | Tách biệt các thư mục dữ liệu, mô hình, đánh giá | Dễ phân công và kiểm tra chéo công việc |
+| Phân biệt tài liệu và kết quả | Đặt tài liệu trong `docs/`, kết quả đo đạc trong `results/` | Tránh nhầm lẫn giữa kế hoạch dự kiến và kết quả thực tế |
+| Bảo vệ dữ liệu gốc | Đặt file CSV ban đầu trong `data/raw/` và không sửa trực tiếp | Luôn có dữ liệu gốc để đối chiếu và chạy lại |
+| Nhất quán trong quy ước | Tên các tệp và thư mục sử dụng chuẩn `snake_case` | Dễ tìm kiếm và gọi hàm giữa các module |
 
-Hai vector giá thực tế và giá dự đoán phải có cùng số mẫu, không rỗng và không chứa NaN hoặc vô cực. Cần thống nhất kích thước trước khi tính để tránh phép toán ngoài ý muốn giữa `(N,)` và `(N,1)`. Với target hằng hoặc quá ít mẫu, cần thống nhất cách xử lý R² và kiểm thử riêng. Accuracy không phù hợp với bài toán này.
-
-Trong giai đoạn validation, báo cáo cả bốn chỉ số. Nếu MAE và MSE cho thứ hạng khác nhau, giải thích sự khác biệt về ảnh hưởng của sai số lớn. Trước khi tuning, thống nhất chỉ số ưu tiên. Khi đã chọn cấu hình, đánh giá cả bốn mô hình trên cùng test để viết báo cáo cuối; không tiếp tục điều chỉnh mô hình dựa trên test.
-
-Ngoài bảng số liệu, cần xem biểu đồ giá thực tế so với dự đoán, đường học và phần dư để biết mô hình thường sai ở đâu. Chú ý các mẫu giá cao và chỉ nhận xét theo nhóm khi có đủ dữ liệu.
-
-### 7.5. Lưu kết quả và dùng mô hình để dự đoán
-
-| File kết quả | Nội dung |
-| --- | --- |
-| `data/processed/train.csv`, `val.csv`, `test.csv` | Đặc trưng và target chưa tiền xử lý; giữ NaN, không lưu index |
-| `results/saved_models/preprocessor.joblib` | Imputer, encoder, scaler và thông tin tên/thứ tự đặc trưng đã học từ train |
-| `results/saved_models/baseline_models.joblib` | Ba baseline đã huấn luyện trên cùng train |
-| `results/saved_models/mlp_house_price_model.keras` | MLP tương ứng với bộ tiền xử lý và cách chia dữ liệu |
-| `results/metrics/model_performance_summary.csv` | Các cột `Model`, `MSE`, `RMSE`, `MAE`, `R2_Score` trên cùng test |
-| `results/figures/actual_vs_predicted.png` | Biểu đồ giá thực tế so với dự đoán |
-| `results/figures/loss_curve.png` | Biểu đồ loss; đường MAE cũng được trình bày trong notebook hoặc biểu đồ kết quả |
-| `results/figures/model_comparison_bar.png` | Biểu đồ so sánh mô hình, ghi rõ chỉ số và đơn vị |
-| `logs/training.log` | Tiến trình, cấu hình và lỗi cần theo dõi; không ghi thông tin bí mật hoặc dữ liệu nhạy cảm |
-
-Lịch sử huấn luyện được dùng để vẽ đường học ngay trong notebook 02 hoặc khi chạy `main.py`. Nạp lại mô hình trong notebook 03 không tự khôi phục lịch sử này.
-
-Notebook 02 và 03 đọc CSV, tách target, nạp đúng bộ tiền xử lý rồi biến đổi dữ liệu. Tránh chuẩn hóa lần thứ hai trên dữ liệu đã chuẩn hóa. Nếu chạy lại notebook 01 và fit bộ tiền xử lý mới, cần huấn luyện lại mô hình tương ứng. Chỉ nạp các file mô hình từ nguồn đáng tin cậy.
-
-Khi dự đoán, chương trình nhận DataFrame có chín đặc trưng, kiểm tra các cột, tiền xử lý bằng bộ đã lưu rồi đưa vào mô hình. Đầu ra là vector giá dự đoán theo USD. Cần kiểm tra kết quả trước và sau khi lưu/nạp để bảo đảm sai khác nằm trong mức cho phép. Ba mẫu minh họa lấy từ test chỉ dùng để giải thích cách dự đoán, không phải dữ liệu mới ngoài bộ dữ liệu.
-
-## 8. Những vấn đề có thể gặp
-
-| Vấn đề | Biểu hiện | Cách xử lý hoặc giới hạn cần nêu |
-| --- | --- | --- |
-| Data leakage | Dùng validation/test để fit tiền xử lý hoặc chọn đặc trưng | Chia tập trước, chỉ học thống kê từ train và kiểm tra bằng unit test |
-| Cột hoặc nhóm phân loại thay đổi | Thiếu cột, sai số chiều hoặc gặp nhóm mới | Kiểm tên cột; dùng encoder đã fit để giữ số chiều |
-| Không chia được bằng qcut | Ranh giới phân vị trùng hoặc nhóm có quá ít mẫu | Kiểm tra trước khi chia, báo lỗi và hướng dẫn điều chỉnh |
-| Dùng nhầm bộ tiền xử lý | Dự đoán sai dù kích thước đầu vào vẫn đúng | Lưu mô hình và bộ tiền xử lý cùng lần huấn luyện; kiểm tra sau khi nạp lại |
-| Giá nhà có dấu hiệu bị giới hạn trên | Khó đánh giá khả năng dự đoán giá cao | Giữ các mẫu, nêu mức lớn nhất 500001 USD và phân tích phần dư |
-| Nhóm có quá ít mẫu | Kết quả theo nhóm không ổn định | Báo số mẫu; không kết luận hiệu năng của nhóm `ISLAND` chỉ từ năm dòng |
-| MLP chưa hội tụ hoặc overfit | Loss còn cao hoặc train/validation chênh lệch nhiều | Kiểm tra tiền xử lý và đường học; đánh giá thay đổi bằng validation trước khi duyệt |
-| Dự đoán ngoài phạm vi dữ liệu | Giá âm hoặc sai nhiều ở vùng mới | Nêu rõ trường hợp lỗi; không tự cắt giá dự đoán để cải thiện chỉ số |
-| Khả năng dự đoán ở vùng địa lý mới | Chia ngẫu nhiên có thể đặt các khu vực gần nhau vào nhiều tập | Kết quả chỉ phản ánh cách chia đang dùng; đánh giá vùng mới cần thí nghiệm riêng |
-| Kiểm thử chưa đầy đủ | Test bị bỏ qua hoặc không kiểm tra kết quả | Bổ sung kiểm tra đầu vào/đầu ra và báo số test chạy, bỏ qua hoặc thất bại |
-
-## 9. Kiểm tra trước khi hoàn thành
-
-- [ ] Đọc đúng CSV và báo lỗi rõ khi thiếu file, sai cột hoặc target không hợp lệ.
-- [ ] Chia dữ liệu lặp lại được với cùng seed; bảo toàn số dòng, không trùng mẫu giữa các tập và giữ X/y khớp nhau.
-- [ ] Kiểm tra các trường hợp qcut không chia được dữ liệu.
-- [ ] Chỉ fit tiền xử lý trên train; kiểm tra giá trị thiếu, cột thiếu toàn bộ, nhóm mới và cột thiếu/thừa/đổi thứ tự.
-- [ ] Dữ liệu giữ nguyên sau khi lưu rồi đọc lại CSV; không bị chuẩn hóa hai lần.
-- [ ] Huấn luyện baseline trước MLP; bốn mô hình trả dự đoán đúng kích thước và không có NaN hoặc vô cực, kể cả với một mẫu.
-- [ ] MLP đúng kiến trúc và cấu hình, có lịch sử huấn luyện và validation riêng.
-- [ ] Đối chiếu chỉ số với ví dụ tính tay và thư viện; kiểm tra dữ liệu rỗng, kích thước, đơn vị và trường hợp đặc biệt của R².
-- [ ] Dự đoán trước và sau khi lưu/nạp khớp nhau trong sai số cho phép, kể cả với đầu vào có giá trị thiếu hoặc nhóm mới.
-- [ ] Chạy thử toàn bộ quy trình với dữ liệu nhỏ có cùng cấu trúc. Một epoch trong lần kiểm thử nhanh không thay thế 100 epochs của bài thực hành.
-- [ ] Notebook 01 → 02 → 03 và `main.py` dùng chung các hàm; tests kiểm tra được đầu vào/đầu ra.
-- [ ] Báo cáo có bảng so sánh bốn mô hình, biểu đồ và nhận xét từ kết quả thực nghiệm.
-- [ ] Nêu rõ lựa chọn California Housing, tỷ lệ 80/10/10 và giới hạn khi suy rộng kết quả.
-
-Chạy `python main.py`, các notebook theo thứ tự và `pytest tests/ -v` để kiểm tra. Sau đó đối chiếu các file kết quả với danh sách trên.
+```text
+Lab_4 Predicting House Prices/
+├── README.md                         # Giới thiệu dự án và hướng dẫn thực thi
+├── requirements.txt                  # Danh sách thư viện sử dụng trong bài lab
+├── main.py                           # Chương trình điều phối toàn bộ pipeline
+├── data/
+│   ├── raw/                          # Dữ liệu gốc California Housing (housing.csv)
+│   └── processed/                    # Dữ liệu thô sau khi chia (train.csv, val.csv, test.csv)
+├── docs/
+│   ├── design.md                     # Tài liệu thiết kế tổng quan bài lab theo 5W1H
+│   ├── Practice exercise 4.pdf       # Đề bài thực hành gốc
+│   └── algorithims/                  # Thư mục thiết kế chi tiết các thuật toán
+│       ├── README.md                 # Giới thiệu các thuật toán trong bài lab
+│       ├── mlp_regression.md         # Thiết kế mạng nơ-ron Multilayer Perceptron
+│       ├── linear_regression.md      # Thiết kế mô hình hồi quy tuyến tính
+│       ├── decision_tree.md          # Thiết kế cây quyết định hồi quy
+│       └── random_forest.md          # Thiết kế rừng ngẫu nhiên hồi quy
+├── notebooks/
+│   ├── README.md                     # Hướng dẫn thứ tự chạy các notebook
+│   ├── 01_eda_and_preprocessing.ipynb # Khám phá dữ liệu và tiền xử lý
+│   ├── 02_mlp_model_training.ipynb   # Huấn luyện baseline và mạng MLP
+│   └── 03_baseline_and_comparison.ipynb # Đánh giá, trực quan hóa và so sánh mô hình
+├── src/
+│   ├── config.py                     # Quản lý đường dẫn, siêu tham số và seed cố định
+│   ├── data/
+│   │   ├── loader.py                 # Nạp và kiểm tra dữ liệu thô
+│   │   └── preprocessing.py          # Chia tập và biến đổi đặc trưng
+│   ├── features/
+│   │   └── feature_engineering.py    # Các hàm tạo đặc trưng bổ sung (tùy chọn)
+│   ├── models/
+│   │   ├── baseline_models.py        # Định nghĩa 3 mô hình học máy truyền thống
+│   │   ├── mlp_model.py              # Xây dựng kiến trúc mạng Keras Sequential MLP
+│   │   └── persistence.py            # Lưu và nạp các mô hình đã huấn luyện
+│   ├── evaluation/
+│   │   ├── metrics.py                # Tính toán MSE, RMSE, MAE, R2
+│   │   └── visualization.py          # Vẽ biểu đồ phân tán, đường học và biểu đồ cột
+│   └── utils/
+│       └── logger.py                 # Ghi nhận nhật ký chạy chương trình
+├── tests/                            # Các bài kiểm thử đơn vị và tích hợp
+└── results/
+    ├── figures/                      # Lưu trữ các biểu đồ xuất ra
+    ├── metrics/                      # Lưu trữ bảng tổng hợp chỉ số
+    └── saved_models/                 # Lưu trữ bộ tiền xử lý và file mô hình
+```
