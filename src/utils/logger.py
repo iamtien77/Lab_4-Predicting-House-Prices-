@@ -1,85 +1,45 @@
-"""
-Module Tiện Ích Ghi Nhật Ký & Đo Thời Gian Thực Thi (Logger & Timing Module)
-Phụ trách: Bạn Tiến và Bạn Thịnh (Task 3)
-Nhiệm vụ:
-- Thiết lập hệ thống logging chuẩn mực ghi đồng thời ra màn hình console và file nhật ký logs/training.log.
-- Cung cấp decorator @log_step đo đạc thời gian thực thi của từng công đoạn trong pipeline.
-"""
+"""Console/file logging and execution timing."""
 
-from typing import Optional, Callable, Any
-from pathlib import Path
-import logging
-import time
 from functools import wraps
+import logging
+from pathlib import Path
+import time
 
 
-def setup_logger(
-    name: str = "HousePriceMLP",
-    log_file: Optional[Path] = None,
-    level: int = logging.INFO
-) -> logging.Logger:
-    """
-    Cấu hình đối tượng logger ghi thông tin ra cả console và file.
-
-    Parameters:
-    -----------
-    name : str
-        Tên định danh của logger.
-    log_file : Optional[Path]
-        Đường dẫn file lưu nhật ký (ví dụ: logs/training.log).
-    level : int
-        Mức độ log (mặc định logging.INFO).
-
-    Returns:
-    --------
-    logging.Logger
-        Đối tượng logger đã được gán các handler sẵn sàng sử dụng.
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: Khởi tạo logger = logging.getLogger(name), đặt level = level.
-    # BƯỚC 2: Kiểm tra nếu logger đã có handler thì return luôn để tránh in lặp log.
-    # BƯỚC 3: Tạo formatter chuẩn định dạng:
-    #   formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    # BƯỚC 4: Tạo StreamHandler ghi ra console:
-    #   console_handler = logging.StreamHandler()
-    #   console_handler.setFormatter(formatter)
-    #   logger.addHandler(console_handler)
-    # BƯỚC 5: Nếu có log_file:
-    #   - Tạo thư mục cha: Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-    #   - Tạo FileHandler(log_file, encoding='utf-8')
-    #   - Gán formatter và thêm vào logger.
-    # BƯỚC 6: Trả về đối tượng logger.
-    """
-    pass
+def setup_logger(name="HousePriceMLP", log_file=None, level=logging.INFO):
+    """Configure one set of handlers, including when the output path changes."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.propagate = False
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+        handler.close()
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
+    handlers = [logging.StreamHandler()]
+    if log_file is not None:
+        path = Path(log_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(path, encoding="utf-8"))
+    for handler in handlers:
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    return logger
 
 
-def log_step(step_name: str) -> Callable:
-    """
-    Decorator dùng để bọc các hàm chức năng, tự động in log khi bắt đầu,
-    kết thúc và đo chính xác thời gian thực thi (giây).
-
-    Parameters:
-    -----------
-    step_name : str
-        Tên mô tả công đoạn đang thực hiện (ví dụ: "Nạp Dữ Liệu", "Huấn Luyện MLP").
-
-    Returns:
-    --------
-    Callable
-        Hàm bao bọc (wrapper) đo thời gian.
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: Định nghĩa decorator(func):
-    #   - Định nghĩa wrapper(*args, **kwargs):
-    #       + In log: f"=== [BẮT ĐẦU] {step_name} ==="
-    #       + Ghi lại thời điểm bắt đầu: start_time = time.perf_counter()
-    #       + Thực thi hàm gốc: result = func(*args, **kwargs)
-    #       + Ghi lại thời điểm kết thúc: elapsed = time.perf_counter() - start_time
-    #       + In log: f"=== [HOÀN THÀNH] {step_name} (Thời gian: {elapsed:.2f}s) ==="
-    #       + Trả về result.
-    # BƯỚC 2: Sử dụng @wraps(func) để bảo toàn metadata của hàm gốc.
-    # BƯỚC 3: Trả về hàm wrapper.
-    """
-    pass
+def log_step(step_name):
+    """Log elapsed time and propagate errors without claiming success."""
+    def decorator(function):
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            logger = logging.getLogger("HousePriceMLP")
+            logger.info("Bắt đầu: %s", step_name)
+            started = time.perf_counter()
+            try:
+                result = function(*args, **kwargs)
+            except Exception:
+                logger.exception("Thất bại: %s", step_name)
+                raise
+            logger.info("Hoàn thành: %s (%.2f giây)", step_name, time.perf_counter() - started)
+            return result
+        return wrapper
+    return decorator

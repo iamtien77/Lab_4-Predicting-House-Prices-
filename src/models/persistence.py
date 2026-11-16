@@ -1,133 +1,108 @@
-"""
-Module Lưu Trữ & Tải Lại Mô Hình (Model Persistence Module)
-Phụ trách: Bạn Tường và Bạn Trí (Task 2)
-Nhiệm vụ:
-- Lưu trữ mô hình mạng nơ-ron MLP Keras định dạng chuẩn .keras (hoặc .h5).
-- Lưu trữ bộ 3 mô hình Baseline Scikit-learn và toàn bộ preprocessing đã fit định dạng .joblib.
-- Tải lại các artifact phục vụ suy luận dự đoán giá nhà độc lập trong tương lai (Inference pipeline).
-"""
+"""Persist trusted local estimators and their fitted preprocessing objects."""
 
-from typing import Dict, Any, Union
 from pathlib import Path
+
+import joblib
+import numpy as np
+import torch
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.utils.validation import check_is_fitted
 
 
-def save_mlp_model(
-    model: Any,
-    filepath: Union[str, Path]
-) -> None:
-    """
-    Lưu mô hình mạng nơ-ron MLP Keras ra đĩa theo định dạng chuẩn .keras.
-
-    Parameters:
-    -----------
-    model : tf.keras.Model
-        Mô hình MLP đã được huấn luyện hoàn tất.
-    filepath : Union[str, Path]
-        Đường dẫn file đích (ví dụ: results/saved_models/mlp_house_price_model.keras).
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: Chuyển filepath thành đối tượng Path, đảm bảo thư mục cha tồn tại:
-    #   - path = Path(filepath)
-    #   - path.parent.mkdir(parents=True, exist_ok=True)
-
-    # BƯỚC 2: Gọi phương thức lưu trữ của Keras:
-    #   - model.save(str(path))
-
-    # BƯỚC 3: In log thông báo kích thước file và xác nhận lưu thành công.
-    """
-    pass
+def _prepare_path(filepath):
+    path = Path(filepath)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
-def load_mlp_model(
-    filepath: Union[str, Path]
-) -> Any:
-    """
-    Tải lại mô hình MLP Keras đã lưu từ đĩa.
-
-    Parameters:
-    -----------
-    filepath : Union[str, Path]
-        Đường dẫn tới file mô hình (.keras).
-
-    Returns:
-    --------
-    tf.keras.Model
-        Mô hình Keras đã phục hồi đầy đủ cấu trúc và trọng số đã học.
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: Kiểm tra file có tồn tại trên đĩa không: assert Path(filepath).exists().
-    # BƯỚC 2: Dùng tensorflow.keras.models.load_model(str(filepath)).
-    # BƯỚC 3: Trả về đối tượng mô hình sẵn sàng cho suy luận (predict).
-    """
-    pass
+def _require_file(filepath):
+    path = Path(filepath)
+    if not path.is_file():
+        raise FileNotFoundError(f"Artifact does not exist: {path}")
+    return path
 
 
-def save_baseline_models(
-    baseline_models: Dict[str, Any],
-    filepath: Union[str, Path]
-) -> None:
-    """
-    Lưu trữ toàn bộ 3 mô hình Baseline Scikit-learn thành file .joblib.
-
-    Parameters:
-    -----------
-    baseline_models : Dict[str, Any]
-        Từ điển chứa 3 mô hình đã fit (Linear Regression, Decision Tree, Random Forest).
-    filepath : Union[str, Path]
-        Đường dẫn file lưu (results/saved_models/baseline_models.joblib).
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: Đảm bảo thư mục cha tồn tại: Path(filepath).parent.mkdir(parents=True, exist_ok=True).
-    # BƯỚC 2: Import joblib và gọi joblib.dump(baseline_models, filepath).
-    # BƯỚC 3: Ghi log xác nhận hoàn thành lưu trữ bộ baseline.
-    """
-    pass
+def save_mlp_model(model, filepath):
+    """Save weights, target statistics and architecture, never a Python model."""
+    from src.models.mlp_model import HousePriceMLP
+    if Path(filepath).suffix != ".pt":
+        raise ValueError("MLP artifacts must use the .pt extension.")
+    if not isinstance(model, HousePriceMLP) or not model.is_fitted:
+        raise ValueError("The PyTorch model must be trained before saving.")
+    torch.save({"format_version": 1, "input_dim": model.input_dim,
+                "hidden_units": [32, 16], "learning_rate": model.learning_rate,
+                "target_unit": "USD", "best_epoch": model.best_epoch,
+                "best_val_loss": model.best_val_loss,
+                "state_dict": {name: value.detach().cpu() for name, value in model.state_dict().items()}},
+               _prepare_path(filepath))
 
 
-def load_baseline_models(
-    filepath: Union[str, Path]
-) -> Dict[str, Any]:
-    """
-    Tải lại bộ 3 mô hình Baseline từ file .joblib.
-
-    Parameters:
-    -----------
-    filepath : Union[str, Path]
-        Đường dẫn file .joblib đã lưu.
-
-    Returns:
-    --------
-    Dict[str, Any]
-        Từ điển chứa các đối tượng mô hình Baseline đã phục hồi.
-
-    Logic chi tiết cần cài đặt:
-    ---------------------------
-    # BƯỚC 1: assert Path(filepath).exists().
-    # BƯỚC 2: Dùng joblib.load(filepath) để khôi phục dict các mô hình.
-    # BƯỚC 3: Trả về từ điển mô hình.
-    """
-    pass
-
-
-
-def save_preprocessor(preprocessor: ColumnTransformer, filepath: Union[str, Path]) -> None:
-    """Đặc tả: lưu toàn bộ ColumnTransformer đã fit bằng joblib.
-    Đích config.PREPROCESSOR_PATH (preprocessor.joblib). Bao gồm imputer,
-    scaler, encoder và schema/thứ tự feature từ train. Kiểm đã fit, tạo thư mục
-    cha; không chỉ lưu scaler. Đi kèm model và raw splits cùng lần huấn luyện.
-    Nếu bật feature engineering sau này, artifact phải chứa cả bước đó.
-    """
-    pass
+def load_mlp_model(filepath):
+    """Restore a validated weights-only checkpoint on CPU for inference."""
+    from src.models.mlp_model import build_mlp_model
+    checkpoint = torch.load(_require_file(filepath), map_location="cpu", weights_only=True)
+    required = {"format_version", "input_dim", "hidden_units", "learning_rate",
+                "target_unit", "best_epoch", "best_val_loss", "state_dict"}
+    if not isinstance(checkpoint, dict) or set(checkpoint) != required:
+        raise ValueError("Invalid MLP checkpoint schema.")
+    if (checkpoint["format_version"] != 1 or checkpoint["hidden_units"] != [32, 16]
+            or checkpoint["target_unit"] != "USD"):
+        raise ValueError("Unsupported MLP checkpoint format or architecture.")
+    epoch, loss = checkpoint["best_epoch"], checkpoint["best_val_loss"]
+    if (isinstance(epoch, bool) or not isinstance(epoch, int) or epoch < 1
+            or not isinstance(loss, (int, float)) or not np.isfinite(loss) or loss < 0):
+        raise ValueError("Invalid checkpoint training metadata.")
+    model = build_mlp_model(checkpoint["input_dim"], checkpoint["learning_rate"])
+    model.load_state_dict(checkpoint["state_dict"], strict=True)
+    if (any(not torch.isfinite(value).all() for value in model.state_dict().values())
+            or model.target_scale <= 0):
+        raise ValueError("Checkpoint weights and target statistics must be finite with positive scale.")
+    model.best_epoch, model.best_val_loss = epoch, loss
+    model.is_fitted = True
+    model.eval()
+    return model
 
 
-def load_preprocessor(filepath: Union[str, Path]) -> ColumnTransformer:
-    """Đặc tả: nạp artifact nội bộ đáng tin cậy bằng joblib, không fit lại.
-    Kiểm file, kiểu artifact và trạng thái fitted. Dùng với transform_features
-    trên feature thô. Schema nằm trong ColumnTransformer; dataset/target unit
-    cố định theo config: California Housing, median_house_value, USD.
-    """
-    pass
+def _validate_baselines(models):
+    names = {"Linear Regression", "Decision Tree", "Random Forest"}
+    if not isinstance(models, dict) or set(models) != names:
+        raise ValueError("Expected the complete three-model baseline mapping.")
+    for model in models.values():
+        check_is_fitted(model)
+        if not callable(getattr(model, "predict", None)):
+            raise TypeError("Baseline artifacts must be fitted predictors.")
+
+
+def save_baseline_models(baseline_models, filepath):
+    """Save all fitted baselines from the same training run."""
+    _validate_baselines(baseline_models)
+    joblib.dump(baseline_models, _prepare_path(filepath))
+
+
+def load_baseline_models(filepath):
+    """Load and validate trusted local baseline estimators."""
+    models = joblib.load(_require_file(filepath))
+    _validate_baselines(models)
+    return models
+
+
+def _validate_preprocessor(preprocessor):
+    if not isinstance(preprocessor, (ColumnTransformer, Pipeline)):
+        raise TypeError("Expected a ColumnTransformer or preprocessing Pipeline.")
+    check_is_fitted(preprocessor)
+    if not callable(getattr(preprocessor, "transform", None)):
+        raise TypeError("Preprocessor must support transform.")
+
+
+def save_preprocessor(preprocessor, filepath):
+    """Save the complete fitted preprocessing object, including optional features."""
+    _validate_preprocessor(preprocessor)
+    joblib.dump(preprocessor, _prepare_path(filepath))
+
+
+def load_preprocessor(filepath):
+    """Load a trusted local preprocessor and verify its fitted state."""
+    preprocessor = joblib.load(_require_file(filepath))
+    _validate_preprocessor(preprocessor)
+    return preprocessor

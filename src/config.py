@@ -127,7 +127,7 @@ class ProjectConfig:
         self.PROCESSED_TEST_PATH = self.PROCESSED_DATA_DIR / "test.csv"
 
         # Artifacts
-        self.MLP_MODEL_PATH = self.SAVED_MODELS_DIR / "mlp_house_price_model.keras"
+        self.MLP_MODEL_PATH = self.SAVED_MODELS_DIR / "mlp_house_price_model.pt"
         self.BASELINES_PATH = self.SAVED_MODELS_DIR / "baseline_models.joblib"
         self.PREPROCESSOR_PATH = self.SAVED_MODELS_DIR / "preprocessor.joblib"
         self.METRICS_SUMMARY_CSV = self.METRICS_DIR / "model_performance_summary.csv"

@@ -24,6 +24,8 @@ wheels/
 # Virtual Environments (Môi trường ảo)
 venv/
 .venv/
+.venv_lab/
+notebooks/artifacts/
 env/
 ENV/
 env.bak/
