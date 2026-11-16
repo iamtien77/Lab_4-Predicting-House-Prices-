@@ -28,13 +28,13 @@ class ProjectConfig:
     SAVED_MODELS_DIR: Path = field(init=False)
     LOGS_DIR: Path = field(init=False)
 
-    # File paths
+    # Đường dẫn các tệp dữ liệu
     RAW_CSV_PATH: Path = field(init=False)
     PROCESSED_TRAIN_PATH: Path = field(init=False)
     PROCESSED_VAL_PATH: Path = field(init=False)
     PROCESSED_TEST_PATH: Path = field(init=False)
     
-    # Artifacts & Output paths
+    # Đường dẫn tạo phẩm và kết quả đầu ra
     MLP_MODEL_PATH: Path = field(init=False)
     BASELINES_PATH: Path = field(init=False)
     PREPROCESSOR_PATH: Path = field(init=False)
@@ -120,19 +120,19 @@ class ProjectConfig:
         self.SAVED_MODELS_DIR = self.RESULTS_DIR / "saved_models"
         self.LOGS_DIR = self.BASE_DIR / "logs"
 
-        # Files
+        # Đường dẫn tệp
         self.RAW_CSV_PATH = self.RAW_DATA_DIR / "housing.csv"
         self.PROCESSED_TRAIN_PATH = self.PROCESSED_DATA_DIR / "train.csv"
         self.PROCESSED_VAL_PATH = self.PROCESSED_DATA_DIR / "val.csv"
         self.PROCESSED_TEST_PATH = self.PROCESSED_DATA_DIR / "test.csv"
 
-        # Artifacts
+        # Tạo phẩm lưu trữ
         self.MLP_MODEL_PATH = self.SAVED_MODELS_DIR / "mlp_house_price_model.pt"
         self.BASELINES_PATH = self.SAVED_MODELS_DIR / "baseline_models.joblib"
         self.PREPROCESSOR_PATH = self.SAVED_MODELS_DIR / "preprocessor.joblib"
         self.METRICS_SUMMARY_CSV = self.METRICS_DIR / "model_performance_summary.csv"
 
-        # Figures
+        # Biểu đồ trực quan
         self.ACTUAL_VS_PRED_PLOT = self.FIGURES_DIR / "actual_vs_predicted.png"
         self.LOSS_CURVE_PLOT = self.FIGURES_DIR / "loss_curve.png"
         self.MODEL_COMPARISON_PLOT = self.FIGURES_DIR / "model_comparison_bar.png"

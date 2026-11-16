@@ -76,3 +76,7 @@ docs/*
 !docs/design.md
 !docs/algorithims/
 !docs/Practice exercise 4.pdf
+
+# Testing temporary files & cache
+.pytest_cache/
+tmp/

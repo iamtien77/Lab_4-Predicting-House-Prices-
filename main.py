@@ -106,7 +106,7 @@ def run_pipeline(args=None):
     model = build_mlp_model(train_features.shape[1], learning_rate=args.lr)
     model, history = train_mlp_model(model, train_features, y_train, val_features, y_val,
                                       epochs=args.epochs, batch_size=args.batch_size)
-    logger.info("Best validation checkpoint: epoch %d, RMSE %.2f USD",
+    logger.info("Điểm lưu (checkpoint) tốt nhất trên tập kiểm định: epoch %d, RMSE %.2f USD",
                 model.best_epoch, np.sqrt(model.best_val_loss))
     save_mlp_model(model, settings.MLP_MODEL_PATH)
     history_frame = pd.DataFrame(history)

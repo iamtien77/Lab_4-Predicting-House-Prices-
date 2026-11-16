@@ -1,4 +1,4 @@
-﻿"""CPU PyTorch regression with train-only target scaling and USD predictions."""
+"""CPU PyTorch regression with train-only target scaling and USD predictions."""
 
 import numpy as np
 import torch
@@ -73,8 +73,8 @@ def train_mlp_model(model, X_train, y_train, X_val, y_val,
     X_train, y_train = check_X_y(X_train, y_train, y_numeric=True)
     X_val, y_val = check_X_y(X_val, y_val, y_numeric=True)
     train_features, val_features = _features(model, X_train), _features(model, X_val)
-    train_targets = torch.as_tensor(np.asarray(y_train, dtype=np.float64))
-    val_targets = torch.as_tensor(np.asarray(y_val, dtype=np.float64))
+    train_targets = torch.as_tensor(np.array(y_train, dtype=np.float64, copy=True))
+    val_targets = torch.as_tensor(np.array(y_val, dtype=np.float64, copy=True))
     model.cpu()
     model.is_fitted = False
     model.best_epoch = model.best_val_loss = None
@@ -109,8 +109,8 @@ def train_mlp_model(model, X_train, y_train, X_val, y_val,
             model.best_val_loss, model.best_epoch = val_mse, epoch + 1
             best_state = {name: value.detach().clone() for name, value in model.state_dict().items()}
         if verbose:
-            print(f"Epoch {epoch + 1}/{epochs}: MSE train={train_mse:.2f} USD²; "
-                  f"MSE validation={val_mse:.2f} USD²; MAE validation={val_mae:.2f} USD")
+            print(f"Kỷ nguyên (Epoch) {epoch + 1}/{epochs}: MSE tập huấn luyện (train)={train_mse:.2f} USD²; "
+                  f"MSE tập kiểm định (val)={val_mse:.2f} USD²; MAE tập kiểm định (val)={val_mae:.2f} USD")
     model.load_state_dict(best_state)
     model.eval()
     model.is_fitted = True
