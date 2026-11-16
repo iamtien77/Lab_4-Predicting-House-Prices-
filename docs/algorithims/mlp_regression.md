@@ -15,7 +15,7 @@ Với một mẫu dữ liệu có vector đặc trưng đầu vào $x \in \mathb
   $$z^{[2]} = W^{[2]} a^{[1]} + b^{[2]}, \qquad a^{[2]} = \text{ReLU}(z^{[2]}) = \max(0, z^{[2]})$$
 
 - Lớp đầu ra (1 nơ-ron, kích hoạt Linear):
-  $$\hat{y} = W^{[3]} a^{[2]} + b^{[3]}$$
+  $$\hat{z} = W^{[3]} a^{[2]} + b^{[3]}, \qquad \hat{y}_{USD} = \mu_{train} + \sigma_{train}\hat{z}$$
 
 Trong đó, $W^{[1]}, W^{[2]}, W^{[3]}$ là các ma trận trọng số, $b^{[1]}, b^{[2]}, b^{[3]}$ là các vector bias, và $\hat{y}$ là giá nhà dự đoán theo đơn vị USD. Vì đây là bài toán hồi quy, lớp đầu ra sử dụng hàm kích hoạt tuyến tính để có thể dự đoán một giá trị thực liên tục mà không bị giới hạn trong khoảng $[0, 1]$.
 
@@ -43,7 +43,7 @@ Số chiều đầu vào $d$ được lấy động từ kích thước ma trậ
 
 Mô hình được huấn luyện bằng cách tối thiểu hóa hàm mất mát sai số bình phương trung bình (Mean Squared Error - MSE):
 
-$$J(W, b) = \frac{1}{N} \sum_{i=1}^N (y_i - \hat{y}_i)^2$$
+$$J(W, b) = \frac{1}{N} \sum_{i=1}^N (z_i - \hat{z}_i)^2, \qquad z_i = (y_i - \mu_{train}) / \sigma_{train}$$
 
 Trong đó $y_i$ là giá nhà thực tế và $\hat{y}_i$ là giá nhà do mạng nơ-ron dự đoán. Hàm MSE phạt rất nặng các sai số lớn do có phép bình phương, giúp mạng tập trung thu hẹp các lỗi dự đoán sai lệch nhiều. Đồng thời, nhóm theo dõi thêm chỉ số MAE trong quá trình học để có cái nhìn trực quan về mức chênh lệch trung bình theo USD:
 
@@ -63,23 +63,23 @@ Thuật toán Adam giúp quá trình hội tụ diễn ra ổn định và ít n
 
 ### Cấu hình và tiêu chí đánh giá
 
-Theo đúng yêu cầu của đề bài thực hành, cấu hình dự kiến cho mạng MLP bao gồm:
+Cấu hình cho mạng MLP giữ kiến trúc, số epochs và batch size của đề bài; learning rate và validation riêng là lựa chọn của dự án:
 - **Tốc độ học (Learning rate):** $\alpha = 0.001$.
 - **Số lượng epochs:** 100 epochs.
 - **Kích thước batch (Batch size):** 32 mẫu mỗi bước cập nhật.
 - **Tập kiểm tra theo dõi:** Sử dụng tập Validation độc lập để tính toán `val_loss` và `val_mae` tại mỗi epoch.
 
 Tiêu chí đánh giá chất lượng học tập của mô hình gồm:
-1. Đường mất mát trên tập Train phải giảm dần và ổn định theo thời gian.
-2. Đường mất mát trên tập Validation phải theo sát đường Train, không xuất hiện hiện tượng phân kỳ quá mức (dấu hiệu của overfitting).
+1. Quan sát xu hướng loss trên Train để đánh giá hội tụ; loss phải hữu hạn nhưng không cần giảm đơn điệu ở mọi epoch.
+2. So sánh loss trên Validation với Train để nhận diện overfitting hoặc underfitting; ghi nhận trung thực các dấu hiệu này thay vì xem đường học không lý tưởng là bằng chứng code sai.
 3. Đánh giá cuối cùng trên tập Test bằng 4 chỉ số: MSE, RMSE, MAE và $R^2$.
 
 ## 5. Kế hoạch kiểm tra
 
 Nhóm dự kiến thực hiện các bước kiểm tra tính đúng đắn trước khi nghiệm thu mô hình:
 - **Kiểm tra tương thích kích thước:** Số chiều đầu vào của lớp Dense đầu tiên phải khớp hoàn toàn với số cột đầu ra của bộ tiền xử lý.
-- **Kiểm tra tính hợp lệ của đầu ra:** Vector dự đoán phải có cùng số dòng với tập dữ liệu đầu vào, không được chứa giá trị NaN, giá trị vô cực hoặc các giá trị phi lý.
-- **Kiểm tra tính nhất quán sau khi lưu trữ:** Mô hình sau khi huấn luyện sẽ được lưu thành tệp `results/saved_models/mlp_house_price_model.keras`. Khi nạp lại từ tệp này, mô hình phải cho ra kết quả dự đoán giống hệt như lúc vừa huấn luyện xong trên cùng một tập dữ liệu đầu vào.
+- **Kiểm tra tính hợp lệ của đầu ra:** Vector dự đoán phải có cùng số dòng với đầu vào và không chứa NaN hoặc vô cực. Dự đoán âm được ghi nhận trong phân tích sai số, không tự clipping hoặc thay đổi hàm đầu ra.
+- **Kiểm tra tính nhất quán sau khi lưu trữ:** CLI lưu `results/saved_models/mlp_house_price_model.pt`; notebook lưu mô hình và training history dưới `notebooks/artifacts/` để bàn giao. Dự đoán trước/sau khi nạp phải khớp trong sai số số học cho phép trên cùng đầu vào và preprocessor. Đường học và bảng kết quả notebook hiển thị trực tiếp trong các ô output, không xuất vào `results/` ở thư mục gốc.
 - **Thử nghiệm chạy ngắn (Smoke test):** Chạy thử nghiệm với 1 epoch trên một tập dữ liệu mẫu nhỏ để xác nhận luồng lan truyền xuôi, tính mất mát và cập nhật trọng số hoạt động trơn tru trước khi chạy đủ 100 epochs.
 
 ## 6. Kế hoạch đánh giá và giới hạn
@@ -90,3 +90,4 @@ Một số giới hạn cần lưu ý:
 - **Đặc thù dữ liệu dạng bảng:** Trong nhiều bài toán thực tế với dữ liệu dạng bảng có kích thước vừa phải, các mô hình học máy dạng cây (như Random Forest) thường hoạt động rất hiệu quả và có thể cho kết quả tương đương hoặc nhỉnh hơn mạng MLP. Nhóm sẽ ghi nhận khách quan nếu kết quả thực nghiệm cho thấy baseline tốt hơn và giải thích nguyên nhân dựa trên đặc điểm cấu trúc dữ liệu.
 - **Ảnh hưởng của trần giá:** Dữ liệu có mức trần 500.001 USD. Mạng MLP có xu hướng dự đoán mức giá trung bình của vùng lân cận nên có thể gặp khó khăn khi dự đoán chính xác các khu vực có giá trị nhà rất cao bị làm tròn trần.
 - **Khả năng dự đoán giá âm:** Hàm kích hoạt Linear ở lớp cuối có thể xuất ra giá trị âm nếu gặp các mẫu có đặc trưng ngoại lai bất thường. Nhóm sẽ kiểm tra xem có mẫu nào bị dự đoán âm hay không để có biện pháp xử lý trong báo cáo.
+

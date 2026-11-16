@@ -4,7 +4,7 @@ Nhóm dự kiến sử dụng mô hình Hồi quy tuyến tính (Linear Regressi
 
 ## 1. Mục đích và lý do lựa chọn
 
-Linear Regression là mô hình học máy có giám sát cổ điển và đơn giản nhất trong các bài toán hồi quy. Mô hình giả định rằng có một mối quan hệ tuyến tính giữa các đặc trưng đầu vào $x$ và giá trị mục tiêu liên tục $y$. Việc đưa Linear Regression vào bài lab giúp nhóm xây dựng một mốc chuẩn tối thiểu (baseline). Nếu một mô hình phức tạp hơn như mạng nơ-ron MLP không vượt qua được mốc này, điều đó cho thấy kiến trúc mạng hoặc quá trình tiền xử lý đang gặp vấn đề.
+Linear Regression là mô hình học máy có giám sát cổ điển và đơn giản trong các bài toán hồi quy. Mô hình giả định rằng có một mối quan hệ tuyến tính giữa các đặc trưng đầu vào $x$ và giá trị mục tiêu liên tục $y$. Việc đưa Linear Regression vào bài lab giúp nhóm xây dựng mốc đối chiếu (baseline). Nếu MLP không vượt qua baseline, cần xem xét độ phù hợp mô hình, khả năng hội tụ và chất lượng dữ liệu; riêng kết quả này không chứng minh code hoặc tiền xử lý sai.
 
 Với một mẫu dữ liệu có vector đặc trưng $x = (x_1, x_2, \dots, x_d)^T$, mô hình tính toán giá nhà dự đoán $\hat{y}$ bằng tổ hợp tuyến tính của các đặc trưng:
 
@@ -49,6 +49,8 @@ $$\hat{w} = (X^T X)^{-1} X^T y$$
 
 Phương pháp giải này tìm ra điểm tối ưu toàn cục chỉ sau một lần tính toán ma trận, không cần phải chọn tốc độ học hay số vòng lặp.
 
+Công thức nghịch đảo trên chỉ áp dụng khi ma trận có hạng đầy đủ. Implementation dùng `LinearRegression` của Scikit-learn, không tự tính nghịch đảo $X^T X$. One-hot encoding `drop=None` cùng intercept tạo phụ thuộc tuyến tính; dự đoán vẫn có thể tính bằng nghiệm bình phương tối thiểu nhưng từng hệ số không được xác định duy nhất và không thể diễn giải như tác động nhân quả.
+
 ### Cấu hình và tiêu chí đánh giá
 
 - **Cấu hình dự kiến:** Mô hình sử dụng hồi quy tuyến tính chuẩn có tính thêm hệ số chặn (fit intercept = True).
@@ -61,9 +63,9 @@ Phương pháp giải này tìm ra điểm tối ưu toàn cục chỉ sau một
 ## 5. Kế hoạch kiểm tra
 
 Nhóm dự kiến thực hiện các bước kiểm tra sau:
-- **Kiểm tra hiện tượng đa cộng tuyến:** Một số đặc trưng trong bộ dữ liệu California Housing có mối tương quan mạnh với nhau (chẳng hạn `total_rooms`, `total_bedrooms` và `households`). Nhóm sẽ kiểm tra xem ma trận hiệp phương sai có bị suy biến hay không để đảm bảo việc nghịch đảo ma trận diễn ra ổn định.
+- **Kiểm tra hiện tượng đa cộng tuyến:** Quan sát hạng ma trận và quan hệ giữa các đặc trưng; ghi nhận giới hạn diễn giải hệ số khi có tương quan mạnh hoặc one-hot đầy đủ cùng intercept. Không tự nghịch đảo ma trận suy biến.
 - **Kiểm tra phân phối phần dư (Residuals):** Phần dư $e_i = y_i - \hat{y}_i$ cần được vẽ đồ thị phân tán để xem xét liệu sai số có phân bổ đồng đều quanh mức 0 hay có xu hướng lệch ở các vùng giá cao.
-- **Kiểm tra tính nhất quán:** Dự đoán của mô hình trước và sau khi lưu thành file `results/saved_models/baseline_models.joblib` phải trùng khớp nhau tuyệt đối.
+- **Kiểm tra tính nhất quán:** Dự đoán trước và sau khi lưu/nạp phải khớp trong sai số số học cho phép. CLI lưu `results/saved_models/baseline_models.joblib`; notebook dùng artifact dưới `notebooks/artifacts/` và hiển thị kết quả trực tiếp trong notebook.
 
 ## 6. Kế hoạch đánh giá và giới hạn
 

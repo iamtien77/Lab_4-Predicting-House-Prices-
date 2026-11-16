@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng notebook — Lab 4
 
-Ba notebook trình bày lần lượt các bước chuẩn bị dữ liệu, huấn luyện và đánh giá mô hình. Các ô code hiện mới chứa hướng dẫn, chưa có kết quả huấn luyện. Khi triển khai, notebook sẽ gọi các hàm trong `src/` để dùng chung cách xử lý với chương trình chính.
+Ba notebook trình bày lần lượt các bước chuẩn bị dữ liệu, huấn luyện và đánh giá mô hình. Các ô code gọi hàm trong `src/` để dùng chung cách xử lý với chương trình chính. Phiên bản PyTorch chưa chạy xác minh vì môi trường thiếu `torch`; code không phải bằng chứng huấn luyện thành công.
 
 ## Thứ tự thực hiện
 
@@ -26,10 +26,12 @@ Với 20.640 mẫu, train/validation/test dự kiến có 16.512/2.064/2.064 dò
 
 Huấn luyện baseline trước MLP. Số chiều đầu vào MLP lấy từ dữ liệu sau tiền xử lý. `HousingFeatureEngineer` là phần mở rộng và mặc định chưa bật.
 
-Notebook 02 dùng validation để theo dõi và chọn cấu hình. Khi đã chọn xong, notebook 03 đánh giá các mô hình trên test trong lần báo cáo cuối. MAE và RMSE được báo cáo theo USD, MSE theo USD², còn R² không có đơn vị.
+Notebook 02 dùng PyTorch CPU và seed chung, target scaling chỉ fit trên train. Mạng chạy đủ 100 epochs mặc định, khôi phục best validation MSE checkpoint, không early stopping. RMSE là metric chính; MSE và RMSE cho cùng thứ hạng checkpoint. History dictionary lưu metrics USD²/USD trên snapshot cuối epoch, tính đều theo từng mẫu; objective training dùng target chuẩn hóa. Notebook 03 đánh giá test cuối cùng, MAE/RMSE theo USD, MSE theo USD², R² không có đơn vị.
+
+Checkpoint `notebooks/artifacts/mlp_house_price_model.pt` lưu weights, target statistics, kiến trúc và best epoch. Loader nạp CPU rồi `predict_mlp` inverse-transform về USD; không nạp `.keras` cũ, cần chạy lại notebook 02 để tạo `.pt`.
 
 Dữ liệu có 207 giá trị thiếu ở `total_bedrooms`, 965 dòng đạt target lớn nhất 500001 USD và chỉ năm dòng thuộc nhóm `ISLAND`. Cần nêu rõ các giới hạn này khi nhận xét, thay vì tự loại mẫu khỏi dữ liệu.
 
 ## Chuẩn bị môi trường
 
-Thống nhất thư viện và phiên bản trước khi triển khai; Jupyter và pytest chưa được khai báo trong `requirements.txt`. Sau khi hoàn thiện code và môi trường, chạy notebook theo thứ tự 01 → 02 → 03.
+`requirements.txt` đã khai báo PyTorch, JupyterLab, nbclient và pytest. Khi có đủ dependencies, chạy notebook theo thứ tự 01 → 02 → 03. Chưa có xác nhận notebook hoặc PyTorch tests chạy thành công trong môi trường hiện tại.

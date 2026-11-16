@@ -50,15 +50,15 @@ Vì việc tìm cây quyết định tối ưu toàn cục là bài toán NP-đ�
 
 Để đảm bảo mô hình không bị quá khớp nghiêm trọng trong bài lab, nhóm dự kiến cấu hình các siêu tham số như sau:
 - **Độ sâu tối đa (max_depth):** Giới hạn ở mức vừa phải (dự kiến `max_depth = 5`) để cây duy trì tính tổng quát hóa tốt.
-- **Hạt giống ngẫu nhiên (random_state):** Cố định `seed = 42` để kết quả phân nhánh có thể tái lập hoàn toàn trên máy của các thành viên.
+- **Hạt giống ngẫu nhiên (random_state):** Cố định `seed = 42` để hỗ trợ tái lập kết quả trong cùng môi trường dữ liệu và thư viện.
 - **Tiêu chí đánh giá:** Tính toán đầy đủ 4 chỉ số MSE, RMSE, MAE và $R^2$ trên cùng tập Test.
 
 ## 5. Kế hoạch kiểm tra
 
 Nhóm dự kiến thực hiện các bước kiểm tra sau:
-- **Kiểm tra hiện tượng quá khớp:** So sánh chỉ số $R^2$ trên tập Train và tập Validation. Nếu $R^2$ trên Train đạt mức tuyệt đối (gần 1.0) nhưng trên Validation lại rất thấp, điều đó cho thấy cây đang bị học vẹt và cần giảm ngay `max_depth`.
+- **Kiểm tra hiện tượng quá khớp:** So sánh R² trên Train và Validation. Khoảng cách lớn có thể là dấu hiệu overfitting; ghi nhận hạn chế và chỉ đề xuất thử cấu hình khác bằng Validation trong một thí nghiệm được duyệt. Không tự thay `max_depth=5` dựa trên Test.
 - **Kiểm tra tính hợp lệ của dự đoán:** Đảm bảo toàn bộ giá trị dự đoán đều nằm trong miền giá trị dương hợp lý (không bị âm do bản chất giá trị lá $c_m$ là trung bình của các giá trị thực tế không âm).
-- **Kiểm tra tính nhất quán:** Mô hình nạp lại từ tệp `results/saved_models/baseline_models.joblib` phải đưa ra dự đoán trùng khớp với mô hình vừa huấn luyện.
+- **Kiểm tra tính nhất quán:** CLI lưu `results/saved_models/baseline_models.joblib`; notebook dùng artifact dưới `notebooks/artifacts/` và hiển thị bảng/biểu đồ trong notebook. Dự đoán trước/sau khi lưu và nạp phải khớp trong sai số số học cho phép.
 
 ## 6. Kế hoạch đánh giá và giới hạn
 
@@ -67,4 +67,4 @@ Decision Tree Regressor đóng vai trò cầu nối trung gian giữa mô hình 
 Một số giới hạn cần lưu ý:
 - **Dự đoán gián đoạn (Step-wise):** Cây quyết định không thể dự đoán một đường cong mượt mà. Nếu giá trị nhà thực tế có tính liên tục mượt theo thu nhập, cây chỉ có thể ước lượng theo từng nấc giá cố định.
 - **Kém linh hoạt khi ngoại suy:** Nếu một căn nhà ở tập Test có đặc trưng nằm ngoài khoảng giá trị của tập Train, cây quyết định chỉ có thể gán nó vào lá gần nhất và dự đoán mức giá trung bình của lá đó, không thể ngoại suy tăng dần theo xu hướng như Linear Regression hay MLP.
-- **Độ ổn định thấp:** Những thay đổi nhỏ trong tập dữ liệu huấn luyện có thể dẫn đến cấu trúc các nhánh cây bị thay đổi hoàn toàn. Giới hạn này sẽ được khắc phục bằng mô hình Random Forest ở bước tiếp theo.
+- **Độ ổn định thấp:** Những thay đổi nhỏ trong dữ liệu huấn luyện có thể làm cấu trúc cây thay đổi đáng kể. Random Forest ở bước tiếp theo hướng tới giảm sự nhạy cảm này, không bảo đảm loại bỏ hoàn toàn.

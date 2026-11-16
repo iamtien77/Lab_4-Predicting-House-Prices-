@@ -2,7 +2,9 @@
 
 Dự án xây dựng mô hình MLP để dự đoán giá nhà và so sánh với Linear Regression, Decision Tree, Random Forest. Thiết kế chi tiết được trình bày trong [docs/design.md](docs/design.md).
 
-Code và notebook hiện mới có phần khung hướng dẫn, chưa triển khai đầy đủ việc huấn luyện và đánh giá. Vì vậy, chưa có kết quả thực nghiệm để kết luận mô hình nào tốt hơn.
+Đối chiếu từng bước với bài giảng PyTorch và các điều chỉnh so với đề gốc: [docs/lecture_alignment.md](docs/lecture_alignment.md).
+
+Pipeline và notebook đã có code huấn luyện, đánh giá và lưu/nạp mô hình. MLP dùng PyTorch; baseline và tiền xử lý dùng scikit-learn. Chưa xác minh thực thi phiên bản PyTorch vì môi trường thiếu `torch`; chưa có kết quả thực nghiệm của phiên bản này để kết luận mô hình nào tốt hơn.
 
 ## 1. Bài toán và yêu cầu của đề
 
@@ -20,7 +22,9 @@ MLP dùng kiến trúc `32 ReLU → 16 ReLU → 1 linear`, Adam, MSE loss, theo 
 - Nhóm `ISLAND` chỉ có **năm dòng**. Một tập có thể không chứa nhóm này sau khi chia, nên encoder cần xử lý được nhóm chưa gặp trong train. Số mẫu quá ít cũng chưa đủ để đánh giá riêng nhóm một cách đáng tin cậy.
 - Target biểu thị giá nhà trung vị của một khu vực, không phải giá giao dịch của từng căn nhà.
 
-Target được giữ nguyên đơn vị **USD**. MAE và RMSE có đơn vị USD, MSE có đơn vị USD², còn R² không có đơn vị. Nếu thử biến đổi target về sau, cần đưa dự đoán về đơn vị gốc trước khi đánh giá.
+Target trong CSV và baseline giữ đơn vị **USD**. MLP chuẩn hóa target bằng mean/std chỉ học từ `y_train` (std bằng 0 dùng scale 1), tối ưu MSE trên target chuẩn hóa và inverse-transform dự đoán về USD. RMSE là metric chính; MAE/RMSE theo USD, MSE theo USD² và R² không có đơn vị. Mean/std được lưu cùng checkpoint, không fit lại khi inference.
+
+MLP chạy đủ số epochs cấu hình (mặc định 100), rồi khôi phục checkpoint có validation MSE thấp nhất; không early stopping. History dictionary `loss`, `mae`, `val_loss`, `val_mae` đo snapshot cuối epoch ở eval mode, cộng sai số từng mẫu rồi chia tổng số mẫu, kể cả batch cuối không đủ. History có đơn vị USD²/USD, khác objective chuẩn hóa dùng để backpropagation.
 
 ## 3. Các bước xử lý và huấn luyện
 
@@ -41,7 +45,7 @@ Target được giữ nguyên đơn vị **USD**. MAE và RMSE có đơn vị US
 | --- | --- |
 | `data/processed/train.csv`, `val.csv`, `test.csv` | Các tập dữ liệu có cả target, chưa điền giá trị thiếu, mã hóa hay chuẩn hóa; giữ NaN và không lưu index |
 | `results/saved_models/preprocessor.joblib` | Toàn bộ bộ tiền xử lý đã fit trên train, gồm imputer, encoder và scaler |
-| `results/saved_models/mlp_house_price_model.keras` | Mô hình MLP đã huấn luyện |
+| `results/saved_models/mlp_house_price_model.pt` | Mô hình MLP đã huấn luyện |
 | `results/saved_models/baseline_models.joblib` | Ba mô hình baseline đã huấn luyện |
 | `results/metrics/model_performance_summary.csv` | Các cột `Model`, `MSE`, `RMSE`, `MAE`, `R2_Score` trên cùng test |
 | `results/figures/` | Các biểu đồ huấn luyện và đánh giá |
@@ -67,9 +71,9 @@ Notebook và `main.py` gọi chung các hàm trong `src/` để thống nhất c
 
 ## 6. Môi trường chạy và các bước kiểm tra
 
-`requirements.txt` liệt kê các thư viện học máy. Jupyter và pytest chưa được khai báo trong file này; cần thống nhất môi trường và phiên bản trước khi triển khai.
+`requirements.txt` khai báo PyTorch, scikit-learn, JupyterLab, nbclient và pytest cùng các thư viện xử lý dữ liệu. MLP chạy CPU; entrypoint seed Python, NumPy và PyTorch, DataLoader dùng generator theo seed. Tái lập được kiểm tra trong cùng môi trường, không cam kết bitwise giữa các phiên bản thư viện/phần cứng.
 
-Sau khi hoàn thiện code và môi trường, chạy `python main.py`, các notebook theo thứ tự 01 → 02 → 03 và `pytest tests/ -v`. Các test mới có phần khung và đang được đánh dấu bỏ qua, nên chưa thể dùng chúng để xác nhận chương trình hoạt động đúng.
+Khi môi trường có đủ dependencies, chạy `python main.py`, các notebook theo thứ tự 01 → 02 → 03 và `pytest tests/ -v`. Tests đã có assertions cho preprocessing, model, persistence và pipeline. Chưa chạy được nhóm PyTorch vì thiếu `torch`; việc có test code không đồng nghĩa tests đã pass.
 
 Những việc cần kiểm tra:
 
@@ -81,8 +85,9 @@ Những việc cần kiểm tra:
 - [ ] Các chỉ số đúng đơn vị; test chỉ dùng để đánh giá cuối.
 - [ ] Notebook chạy theo thứ tự và có nhận xét dựa trên kết quả thực nghiệm.
 
-## 7. Thứ tự triển khai
+## 7. Thứ tự xác minh
 
-Bắt đầu bằng việc thống nhất dữ liệu đầu vào và các file cần lưu. Tiếp theo, hoàn thiện phần đọc dữ liệu, chia tập và tiền xử lý; huấn luyện baseline rồi đến MLP. Cuối cùng, bổ sung lưu/nạp mô hình, đánh giá và viết báo cáo trong notebook.
+Khi môi trường sẵn sàng, chạy tests, smoke test với ít epochs và kiểm tra raw input → preprocessor → checkpoint → USD predictions trước khi chạy đủ 100 epochs. Checkpoint `.keras` cũ không được loader PyTorch đọc hoặc tự chuyển đổi; cần huấn luyện lại để tạo `.pt`.
 
 Trong quá trình này, ưu tiên kiểm tra data leakage, cách mã hóa biến phân loại và sự nhất quán giữa huấn luyện với dự đoán.
+
