@@ -106,7 +106,7 @@ def test_pipeline_smoke_and_inference_round_trip(tmp_path, monkeypatch):
                  "sample_predictions.csv"):
         assert (metrics / name).is_file()
     figures = list((output / "results" / "figures").glob("*.png"))
-    assert len(figures) == 10
+    assert len(figures) == 15
     assert all(path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n") for path in figures)
 
     # Nạp toàn bộ artifact của cùng lần chạy; mẫu mới không được fit lại.

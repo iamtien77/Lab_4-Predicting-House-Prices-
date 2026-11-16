@@ -145,15 +145,13 @@ def run_pipeline(args=None):
     summary.to_csv(settings.METRICS_SUMMARY_CSV, index=False)
     logger.info("Kết quả đánh giá cuối trên test:\n%s", summary.to_string(index=False))
     if not args.skip_plots:
-        eda_dir = settings.FIGURES_DIR / "eda"
-        eda_dir.mkdir(parents=True, exist_ok=True)
         train_frame = X_train.assign(**{target: y_train})
-        plot_feature_distributions(train_frame, save_path=eda_dir / "eda_feature_distributions.png")
-        plot_geographical_distribution(train_frame, target_col=target, save_path=eda_dir / "eda_geographical_scatter.png")
-        plot_correlation_heatmap(train_frame, target_col=target, save_path=eda_dir / "eda_correlation_heatmap.png")
-        plot_target_distribution(train_frame, target_col=target, save_path=eda_dir / "eda_target_distribution.png")
-        plot_categorical_distribution(train_frame, cat_col="ocean_proximity", target_col=target, save_path=eda_dir / "eda_categorical_distribution.png")
-        logger.info("Đã xuất 5 biểu đồ EDA trực quan vào: %s", eda_dir)
+        plot_feature_distributions(train_frame, save_path=settings.FIGURES_DIR / "eda_feature_distributions.png")
+        plot_geographical_distribution(train_frame, target_col=target, save_path=settings.FIGURES_DIR / "eda_geographical_scatter.png")
+        plot_correlation_heatmap(train_frame, target_col=target, save_path=settings.FIGURES_DIR / "eda_correlation_heatmap.png")
+        plot_target_distribution(train_frame, target_col=target, save_path=settings.FIGURES_DIR / "eda_target_distribution.png")
+        plot_categorical_distribution(train_frame, cat_col="ocean_proximity", target_col=target, save_path=settings.FIGURES_DIR / "eda_categorical_distribution.png")
+        logger.info("Đã xuất 5 biểu đồ EDA trực quan vào: %s", settings.FIGURES_DIR)
 
         plot_loss_and_mae_curves(history, settings.LOSS_CURVE_PLOT)
         plot_model_comparison_bar(summary, settings.MODEL_COMPARISON_PLOT)
