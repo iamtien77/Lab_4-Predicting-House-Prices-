@@ -1,81 +1,120 @@
-"""Bộ khung preprocessing dùng chung — Huyền & My (Task 1). Chưa triển khai.
-Chia tập trước; imputation, encoding và scaling chỉ học từ train.
-"""
+"""Mô-đun chia tách dữ liệu thô độc lập và khớp các phép biến đổi tiền xử lý chỉ trên tập Train."""
 from pathlib import Path
-from typing import Optional, Tuple, Union
+import math
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.utils.validation import check_is_fitted
+from src.config import config
+from src.data.loader import validate_features, validate_target
+from src.features.feature_engineering import HousingFeatureEngineer
 
 
-def split_data_8_1_1(
-    X: pd.DataFrame, y: pd.Series, random_state: int = 42,
-    stratify: bool = True, n_bins_train: int = 10, n_bins_temp: int = 5,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
-    """Trả (X_train, X_val, X_test, y_train, y_val, y_test) CHƯA biến đổi.
+def _validate_pair(X, y):
+    """Kiểm tra tính tương thích giữa tập đặc trưng X và nhãn mục tiêu y (cùng số dòng, chỉ mục trùng khớp)."""
+    validate_features(X)
+    validate_target(y)
+    if not X.index.is_unique or not y.index.is_unique or not X.index.equals(y.index):
+        raise ValueError("X/y must have identical unique indexes in the same order.")
 
-    1. Kiểm số dòng và index X/y trùng khớp, index duy nhất, target hữu hạn.
-    2. Chia train/temp với test_size=0.20; chia val/test với test_size=0.50,
-       cùng random_state. CSV hiện tại: 16512 / 2064 / 2064 dòng.
-    3. stratify=True: qcut(y, n_bins_train, duplicates='drop', labels=False)
-       cho lần 1; qcut(y_temp, n_bins_temp, ...) cho lần 2. Kiểm bin hợp lệ,
-       đủ mẫu mỗi bin và đủ mẫu mỗi phía cho số lớp trước khi split.
-       Không khả thi (kể cả target hằng): ValueError hướng dẫn giảm bins hoặc
-       chọn stratify=False; không âm thầm đổi chiến lược.
-    4. Giữ index gốc; kiểm giao rỗng giữa ba tập, bảo toàn đủ dòng và X/y.
-       Số dòng lẻ làm tròn theo train_test_split.
 
-    8:1:1 là lựa chọn dự án; PDF minh họa train/test 80/20. qcut không tự ngăn
-    leakage: imputer/encoder/scaler vẫn phải fit chỉ trên train.
+def _stratification_labels(y, bins, test_size):
+    """Tạo nhãn phân tầng dựa trên phân vị của biến mục tiêu y để đảm bảo phân phối đồng đều giữa các tập."""
+    message = "Stratification is not feasible; reduce bins or select stratify=False."
+    if not isinstance(bins, int) or isinstance(bins, bool) or bins < 2:
+        raise ValueError(message)
+    labels = pd.qcut(y, bins, duplicates="drop", labels=False)
+    counts = labels.value_counts()
+    test_count = math.ceil(len(y) * test_size)
+    if labels.isna().any() or len(counts) < 2 or counts.min() < 2:
+        raise ValueError(message)
+    if min(test_count, len(y) - test_count) < len(counts):
+        raise ValueError(message)
+    return labels
+
+
+def split_data_8_1_1(X, y, random_state=42, stratify=True, n_bins_train=10, n_bins_temp=5):
     """
-    pass
-
-
-def fit_preprocessor(X_train: pd.DataFrame) -> ColumnTransformer:
-    """Fit và trả ColumnTransformer trên X_train THÔ; chưa có implementation.
-
-    - Chỉ nhận 9 feature theo config, không có target hoặc cột đã encode.
-      Kiểm schema, số hữu hạn (cho phép NaN); reject cột train thiếu hoàn toàn.
-    - Numeric: SimpleImputer(strategy='median') -> StandardScaler.
-    - Categorical: SimpleImputer(strategy='most_frequent') ->
-      OneHotEncoder(handle_unknown='ignore', sparse_output=False, drop=None).
-    - Chọn cột bằng tên, thứ tự numeric rồi categorical theo config;
-      ColumnTransformer(remainder='drop', sparse_threshold=0).
-    - Fit duy nhất trên train. feature_names_in_, get_feature_names_out() và
-      fitted transformers lưu schema, thứ tự cột và thống kê.
-    - Không biến đổi target. Feature engineering tùy chọn chưa nối vào luồng
-      cơ bản; nếu bật sau này phải nằm trong artifact preprocessing chung.
-
-    Không get_dummies riêng trên val/test, không học median/mode khi transform.
-    Output dense cho Keras; số chiều phụ thuộc categories có trong train.
+    Phân chia dữ liệu thô thành 3 tập độc lập: Train (80%), Validation (10%) và Test (10%).
+    Bảo toàn định dạng thô ban đầu, không áp dụng bất kỳ bước tiền xử lý hay chuẩn hóa nào trước khi chia.
     """
-    pass
+    _validate_pair(X, y)
+    labels = _stratification_labels(y, n_bins_train, 0.2) if stratify else None
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X, y, test_size=0.2, random_state=random_state, stratify=labels
+    )
+    labels_temp = _stratification_labels(y_temp, n_bins_temp, 0.5) if stratify else None
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp, y_temp, test_size=0.5, random_state=random_state, stratify=labels_temp
+    )
+    print(f"[Chia tập dữ liệu] Tỷ lệ 80/10/10 thành công: Train = {len(X_train):,} dòng, Validation = {len(X_val):,} dòng, Test = {len(X_test):,} dòng.")
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def transform_features(preprocessor: ColumnTransformer, X: pd.DataFrame) -> np.ndarray:
-    """Kiểm schema rồi transform bằng preprocessor đã fit, trả dense (N, D).
-
-    Nhận feature thô, không có target. Cho phép đảo thứ tự cột vì chọn bằng tên;
-    thiếu/dư cột báo ValueError. Category mới thành toàn 0 trong nhánh one-hot;
-    không refit/đổi số chiều. NotFittedError nếu chưa fit.
-    Kiểm output hữu hạn, giữ số dòng và D bằng số feature_names_out.
-    Numeric được scale; one-hot giữ 0/1, không yêu cầu mọi cột có std=1.
+def fit_preprocessor(X_train, *, apply_log=False, create_interactions=False):
     """
-    pass
-
-
-def save_processed_splits(
-    X_train: pd.DataFrame, X_val: pd.DataFrame, X_test: pd.DataFrame,
-    y_train: pd.Series, y_val: pd.Series, y_test: pd.Series,
-    target_col: str, output_dir: Optional[Union[str, Path]] = None,
-) -> None:
-    """Artifact: train.csv, val.csv, test.csv là RAW SPLITS có target.
-
-    Ghép X/y khi index đã kiểm trùng khớp; bảo toàn thứ tự dòng và NaN.
-    Ghi index=False vào output_dir hoặc config.PROCESSED_DATA_DIR.
-    Không ghi feature đã impute/encode/scale, không sinh .npy.
-    Bên đọc CSV tách config.TARGET_COLUMN rồi gọi transform_features với
-    preprocessor.joblib của chính lần chia này; không fit lại.
-    Index CSV mới không chứng minh split disjoint; phải kiểm trước khi lưu.
+    Khớp (fit) bộ tiền xử lý gồm điền khuyết, tạo đặc trưng tùy chọn, mã hóa one-hot và chuẩn hóa z-score.
+    QUY TẮC BẮT BUỘC: Bộ biến đổi CHỈ được học thống kê (fit) trên tập Train để ngăn ngừa Data Leakage.
     """
-    pass
+    validate_features(X_train, require_complete_columns=True)
+    # Pipeline xử lý biến số: Điền trung vị -> Tạo đặc trưng tùy chọn -> Chuẩn hóa z-score
+    numeric = Pipeline([
+        ("imputer", SimpleImputer(strategy="median").set_output(transform="pandas")),
+        ("features", HousingFeatureEngineer(apply_log=apply_log, create_interactions=create_interactions)),
+        ("scaler", StandardScaler()),
+    ])
+    # Pipeline xử lý biến phân loại: Điền giá trị thường gặp nhất -> Mã hóa One-Hot
+    categorical = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False, drop=None)),
+    ])
+    # Kết hợp xử lý theo từng nhóm cột thông qua ColumnTransformer
+    preprocessor = ColumnTransformer(
+        [("numeric", numeric, config.NUMERIC_FEATURE_NAMES),
+         ("categorical", categorical, config.CATEGORICAL_FEATURE_NAMES)],
+        remainder="drop", sparse_threshold=0,
+    )
+    preprocessor.fit(X_train)
+    print(f"[Tiền xử lý] Đã fit thành công ColumnTransformer trên tập Train (số đặc trưng sau fit: {len(preprocessor.get_feature_names_out())}).")
+    return preprocessor
+
+
+def transform_features(preprocessor, X):
+    """
+    Chuyển đổi các đặc trưng thô bằng bộ tiền xử lý đã fit sẵn từ tập Train.
+    Trả về ma trận số thực dense ndarray phục vụ việc đưa vào mô hình học máy.
+    """
+    check_is_fitted(preprocessor)
+    validate_features(X)
+    result = np.asarray(preprocessor.transform(X), dtype=float)
+    expected_shape = (len(X), len(preprocessor.get_feature_names_out()))
+    if result.shape != expected_shape or not np.isfinite(result).all():
+        raise ValueError("Transformed features have invalid shape or non-finite values.")
+    return result
+
+
+def save_processed_splits(X_train, X_val, X_test, y_train, y_val, y_test,
+                          target_col, output_dir=None):
+    """
+    Lưu các tập dữ liệu thô đã chia ra các tệp CSV riêng biệt (train.csv, val.csv, test.csv).
+    Bảo toàn giá trị khuyết (NaN) và giữ nguyên đơn vị USD của biến mục tiêu, không scale trước khi lưu.
+    """
+    if target_col != config.TARGET_COLUMN:
+        raise ValueError(f"Expected target name {config.TARGET_COLUMN}.")
+    pairs = [(X_train, y_train), (X_val, y_val), (X_test, y_test)]
+    for X, y in pairs:
+        _validate_pair(X, y)
+    combined_index = X_train.index.append(X_val.index).append(X_test.index)
+    if not combined_index.is_unique:
+        raise ValueError("Raw split indexes must be disjoint before saving.")
+    directory = Path(output_dir) if output_dir is not None else config.PROCESSED_DATA_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, (X, y) in zip(("train", "val", "test"), pairs):
+        frame = X.copy()
+        frame[target_col] = y
+        frame.to_csv(directory / f"{name}.csv", index=False)
+    print(f"[Lưu dữ liệu] Đã lưu thành công các tập train.csv, val.csv, test.csv tại thư mục: '{directory}'.")
