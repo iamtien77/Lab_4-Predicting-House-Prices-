@@ -1,5 +1,7 @@
 # Thiết kế bài lab dự đoán giá nhà theo 5W1H
 
+> Cập nhật triển khai 16/11/2026: mỗi CLI run được lưu riêng tại `runs/<run_id>/`, gồm `data/processed/`, `results/`, `logs/` và `manifest.json`. Con trỏ `results/latest_run.json` chỉ cập nhật khi run hoàn tất. Các đường dẫn `results/...` và `data/processed/...` trong thiết kế ban đầu bên dưới được hiểu tương đối với thư mục run đối với CLI mới. Notebook giữ bảng/biểu đồ trong output `.ipynb`; cache bàn giao vẫn ở `notebooks/artifacts/`, tách hoàn toàn khỏi CLI.
+
 Trong bài lab này, nhóm dự kiến thực hiện bài toán dự đoán giá nhà trung vị dựa trên tập dữ liệu California Housing. Mục tiêu chính là thực hành các bước cơ bản của một bài toán Machine Learning dạng hồi quy chuẩn mực: chia dữ liệu độc lập ngay từ đầu, tiền xử lý và chuẩn hóa trên tập Train, huấn luyện mô hình mạng nơ-ron nhiều tầng (MLP) cùng ba mô hình baseline truyền thống để so sánh đối chứng.
 
 Tài liệu trình bày phương án thiết kế ban đầu trước khi triển khai, gồm phạm vi, cách tổ chức công việc, phương pháp thử nghiệm và tiêu chí đánh giá. Nhóm thống nhất các lựa chọn này trước khi bắt đầu thực hành và sẽ dựa vào kết quả đo đạc thực tế sau khi chạy xong để đưa ra nhận xét khách quan.
