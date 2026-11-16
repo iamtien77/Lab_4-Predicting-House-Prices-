@@ -6,14 +6,17 @@ import numpy as np
 import pandas as pd
 
 from src.config import ProjectConfig, config
-from src.data.loader import load_housing_data
+from src.data.loader import fetch_dataset_info, load_housing_data
 from src.data.preprocessing import (
     fit_preprocessor, save_processed_splits, split_data_8_1_1, transform_features,
 )
 from src.evaluation.metrics import RegressionEvaluator
 from src.evaluation.visualization import (
-    plot_actual_vs_predicted, plot_loss_and_mae_curves,
+    plot_actual_vs_predicted, plot_categorical_distribution,
+    plot_correlation_heatmap, plot_feature_distributions,
+    plot_geographical_distribution, plot_loss_and_mae_curves,
     plot_model_comparison_bar, plot_residuals_distribution,
+    plot_target_distribution,
 )
 from src.models.baseline_models import BaselineRegressionSuite
 from src.models.mlp_model import build_mlp_model, predict_mlp, train_mlp_model
@@ -87,6 +90,18 @@ def run_pipeline(args=None):
     logger.info("Chỉ số: MSE (USD²), RMSE/MAE (USD), R² (không đơn vị).")
     set_random_seed(args.random_state)
     data, target = load_housing_data(args.data_path)
+    # Xác định và khám phá tổng quan dữ liệu thô ban đầu (Data Understanding)
+    raw_info = fetch_dataset_info(data, target)
+    missing_cols = {k: v for k, v in raw_info["missing"].items() if v > 0}
+    target_stats = raw_info["target_summary"]
+    logger.info("Xác định dữ liệu thô: %d dòng, %d cột | Số dòng trùng lặp: %d",
+                raw_info["shape"][0], raw_info["shape"][1], raw_info["duplicate_rows"])
+    logger.info("Kiểm tra giá trị khuyết thiếu ban đầu: %s",
+                f"{missing_cols}" if missing_cols else "Không có giá trị khuyết")
+    logger.info("Biến mục tiêu '%s': min=%.0f USD, trung vị=%.0f USD, max=%.0f USD (đạt trần giá: %d mẫu)",
+                target, target_stats["min"], target_stats["50%"], target_stats["max"],
+                raw_info["target_max_count"])
+    logger.info("Cơ sở chia tập: Phân tầng theo phân vị biến mục tiêu để giữ cân bằng phân phối giá nhà.")
     # Chia dữ liệu thô trước mọi phép học thống kê và tạo đặc trưng.
     splits = split_data_8_1_1(data.drop(columns=target), data[target],
                               random_state=args.random_state)
@@ -130,6 +145,16 @@ def run_pipeline(args=None):
     summary.to_csv(settings.METRICS_SUMMARY_CSV, index=False)
     logger.info("Kết quả đánh giá cuối trên test:\n%s", summary.to_string(index=False))
     if not args.skip_plots:
+        eda_dir = settings.FIGURES_DIR / "eda"
+        eda_dir.mkdir(parents=True, exist_ok=True)
+        train_frame = X_train.assign(**{target: y_train})
+        plot_feature_distributions(train_frame, save_path=eda_dir / "eda_feature_distributions.png")
+        plot_geographical_distribution(train_frame, target_col=target, save_path=eda_dir / "eda_geographical_scatter.png")
+        plot_correlation_heatmap(train_frame, target_col=target, save_path=eda_dir / "eda_correlation_heatmap.png")
+        plot_target_distribution(train_frame, target_col=target, save_path=eda_dir / "eda_target_distribution.png")
+        plot_categorical_distribution(train_frame, cat_col="ocean_proximity", target_col=target, save_path=eda_dir / "eda_categorical_distribution.png")
+        logger.info("Đã xuất 5 biểu đồ EDA trực quan vào: %s", eda_dir)
+
         plot_loss_and_mae_curves(history, settings.LOSS_CURVE_PLOT)
         plot_model_comparison_bar(summary, settings.MODEL_COMPARISON_PLOT)
         for name, prediction in predictions.items():
@@ -142,7 +167,7 @@ def run_pipeline(args=None):
     demo = demo_inference(model, preprocessor, X_test, y_test)
     demo.to_csv(settings.METRICS_DIR / "sample_predictions.csv", index=False)
     logger.info("Hoàn thành pipeline; không dùng kết quả test để chỉnh mô hình.")
-    return {"summary": summary, "validation_summary": validation_summary,
+    return {"raw_info": raw_info, "summary": summary, "validation_summary": validation_summary,
             "history": history, "predictions": predictions, "splits": splits,
             "preprocessor": preprocessor, "model": model, "baselines": suite.models}
 
