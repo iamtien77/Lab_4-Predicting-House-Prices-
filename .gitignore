@@ -80,3 +80,8 @@ docs/*
 # Testing temporary files & cache
 .pytest_cache/
 tmp/
+
+# Isolated CLI experiments and the atomic latest-success pointer
+runs/
+results/latest_run.json
+.test_artifacts/

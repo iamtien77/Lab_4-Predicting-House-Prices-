@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.utils.validation import check_array, check_X_y
+from src.config import config
 
 
 class HousePriceMLP(nn.Module):
@@ -30,9 +31,9 @@ class HousePriceMLP(nn.Module):
         return self.network(features).squeeze(-1)
 
 
-def build_mlp_model(input_dim: int, learning_rate: float = 0.001):
+def build_mlp_model(input_dim: int, learning_rate=None):
     """Build the fixed 32/16/1 network on CPU."""
-    return HousePriceMLP(input_dim, learning_rate)
+    return HousePriceMLP(input_dim, config.MLP_LEARNING_RATE if learning_rate is None else learning_rate)
 
 
 def _features(model, X):
@@ -60,13 +61,16 @@ def _epoch_metrics(model, features, targets, batch_size):
 
 
 def train_mlp_model(model, X_train, y_train, X_val, y_val,
-                    epochs: int = 100, batch_size: int = 32, verbose: int = 1):
+                    epochs=None, batch_size=None, verbose=None):
     """Fit scaling on train, run all epochs, restore lowest validation MSE.
 
     History contains end-of-epoch MSE (USD²) and MAE (USD), not the
     standardized objective optimized by Adam. Calling again refits target
     statistics and resets Adam, but continues from existing network weights.
     """
+    epochs = config.MLP_EPOCHS if epochs is None else epochs
+    batch_size = config.MLP_BATCH_SIZE if batch_size is None else batch_size
+    verbose = config.MLP_VERBOSE if verbose is None else verbose
     for name, value in (("epochs", epochs), ("batch_size", batch_size)):
         if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or value <= 0:
             raise ValueError(f"{name} must be a positive integer.")
@@ -109,7 +113,7 @@ def train_mlp_model(model, X_train, y_train, X_val, y_val,
             model.best_val_loss, model.best_epoch = val_mse, epoch + 1
             best_state = {name: value.detach().clone() for name, value in model.state_dict().items()}
         if verbose:
-            print(f"Kỷ nguyên (Epoch) {epoch + 1}/{epochs}: MSE tập huấn luyện (train)={train_mse:.2f} USD²; "
+            print(f"Huấn luyện {epoch + 1}/{epochs}: MSE tập huấn luyện (train)={train_mse:.2f} USD²; "
                   f"MSE tập kiểm định (val)={val_mse:.2f} USD²; MAE tập kiểm định (val)={val_mae:.2f} USD")
     model.load_state_dict(best_state)
     model.eval()

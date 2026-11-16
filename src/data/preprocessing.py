@@ -37,12 +37,16 @@ def _stratification_labels(y, bins, test_size):
     return labels
 
 
-def split_data_8_1_1(X, y, random_state=42, stratify=True, n_bins_train=10, n_bins_temp=5):
+def split_data_8_1_1(X, y, random_state=None, stratify=None, n_bins_train=None, n_bins_temp=None):
     """
     Phân chia dữ liệu thô thành 3 tập độc lập: Train (80%), Validation (10%) và Test (10%).
     Bảo toàn định dạng thô ban đầu, không áp dụng bất kỳ bước tiền xử lý hay chuẩn hóa nào trước khi chia.
     """
     _validate_pair(X, y)
+    random_state = config.RANDOM_STATE if random_state is None else random_state
+    stratify = config.USE_STRATIFIED_SPLIT if stratify is None else stratify
+    n_bins_train = config.N_STRATIFY_BINS_TRAIN if n_bins_train is None else n_bins_train
+    n_bins_temp = config.N_STRATIFY_BINS_TEMP if n_bins_temp is None else n_bins_temp
     labels = _stratification_labels(y, n_bins_train, 0.2) if stratify else None
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, test_size=0.2, random_state=random_state, stratify=labels

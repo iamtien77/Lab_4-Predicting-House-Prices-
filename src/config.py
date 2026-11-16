@@ -49,15 +49,7 @@ class ProjectConfig:
     # --------------------------------------------------------------------------
     RANDOM_STATE: int = 42
     
-    # Tỷ lệ chia tập 8:1:1 (Train: 80%, Validation: 10%, Test: 10%)
-    TRAIN_RATIO: float = 0.80
-    VAL_RATIO: float = 0.10
-    TEST_RATIO: float = 0.10
-    
-    # Bước chia 1: Tách Train (80%) và Temp (20%) -> TEST_SIZE_TEMP = 0.20
-    TEST_SIZE_TEMP: float = 0.20
-    # Bước chia 2: Tách Temp (20%) thành Validation (10%) và Test (10%) -> VAL_SIZE_FROM_TEMP = 0.50
-    VAL_SIZE_FROM_TEMP: float = 0.50
+    # split_data_8_1_1 giữ cố định 80/10/10; không có tham số tỷ lệ tùy chỉnh.
 
     # Phân tầng (Stratified) dựa trên phân vị giá nhà
     USE_STRATIFIED_SPLIT: bool = True
@@ -78,18 +70,9 @@ class ProjectConfig:
     # --------------------------------------------------------------------------
     # 3. SIÊU THAM SỐ MẠNG NƠ-RON MLP (THEO ĐỀ BÀI LAB 4)
     # --------------------------------------------------------------------------
-    # input_dim bắt buộc lấy từ X_train_transformed.shape[1], không cố định.
-    MLP_HIDDEN_1_UNITS: int = 32
-    MLP_HIDDEN_1_ACTIVATION: str = "relu"
-    MLP_HIDDEN_2_UNITS: int = 16
-    MLP_HIDDEN_2_ACTIVATION: str = "relu"
-    MLP_OUTPUT_UNITS: int = 1
-    MLP_OUTPUT_ACTIVATION: str = "linear"
-
-    MLP_OPTIMIZER: str = "adam"
+    # HousePriceMLP cố định 32 ReLU -> 16 ReLU -> 1 linear, Adam/MSE.
+    # input_dim lấy từ X_train_transformed.shape[1]. Chỉ các tham số dưới đây tùy chỉnh.
     MLP_LEARNING_RATE: float = 0.001
-    MLP_LOSS: str = "mean_squared_error"
-    MLP_METRICS: List[str] = field(default_factory=lambda: ["mae"])
     MLP_EPOCHS: int = 100
     MLP_BATCH_SIZE: int = 32
     MLP_VERBOSE: int = 1
@@ -99,15 +82,13 @@ class ProjectConfig:
     # --------------------------------------------------------------------------
     LR_FIT_INTERCEPT: bool = True
     DT_MAX_DEPTH: int = 5
-    DT_RANDOM_STATE: int = 42
     RF_N_ESTIMATORS: int = 100
-    RF_RANDOM_STATE: int = 42
+    # Cây và rừng dùng RANDOM_STATE chung, có thể ghi đè bằng CLI --random-state.
 
     # --------------------------------------------------------------------------
     # 5. CẤU HÌNH TRỰC QUAN HÓA (VISUALIZATION)
     # --------------------------------------------------------------------------
-    FIGURE_DPI: int = 300
-    STYLE: str = "seaborn-v0_8-whitegrid"
+    # DPI truyền trực tiếp vào hàm vẽ; mặc định của visualization là 300.
 
     def __post_init__(self):
         """Khởi tạo tất cả các đường dẫn phụ thuộc sau khi BASE_DIR được xác định."""
@@ -157,11 +138,17 @@ class ProjectConfig:
         """Chuyển đổi cấu hình thành dictionary phục vụ in log và kiểm tra."""
         return {
             "RANDOM_STATE": self.RANDOM_STATE,
-            "SPLIT_RATIO": f"{int(self.TRAIN_RATIO*10)}:{int(self.VAL_RATIO*10)}:{int(self.TEST_RATIO*10)}",
+            "SPLIT_RATIO": "8:1:1 (fixed)",
+            "USE_STRATIFIED_SPLIT": self.USE_STRATIFIED_SPLIT,
+            "N_STRATIFY_BINS_TRAIN": self.N_STRATIFY_BINS_TRAIN,
+            "N_STRATIFY_BINS_TEMP": self.N_STRATIFY_BINS_TEMP,
             "MLP_EPOCHS": self.MLP_EPOCHS,
             "MLP_BATCH_SIZE": self.MLP_BATCH_SIZE,
             "MLP_LEARNING_RATE": self.MLP_LEARNING_RATE,
-            "FIGURE_DPI": self.FIGURED_DPI if hasattr(self, "FIGURED_DPI") else self.FIGURE_DPI,
+            "MLP_VERBOSE": self.MLP_VERBOSE,
+            "LR_FIT_INTERCEPT": self.LR_FIT_INTERCEPT,
+            "DT_MAX_DEPTH": self.DT_MAX_DEPTH,
+            "RF_N_ESTIMATORS": self.RF_N_ESTIMATORS,
         }
 
 

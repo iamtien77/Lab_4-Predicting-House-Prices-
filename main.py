@@ -1,11 +1,15 @@
 """CLI orchestration; notebooks call the same reusable modules in src."""
 
 import argparse
+from dataclasses import replace
+from datetime import datetime, timezone
+from importlib.metadata import version
 from pathlib import Path
+from uuid import uuid4
 import numpy as np
 import pandas as pd
 
-from src.config import ProjectConfig, config
+from src.config import config
 from src.data.loader import fetch_dataset_info, load_housing_data
 from src.data.preprocessing import (
     fit_preprocessor, save_processed_splits, split_data_8_1_1, transform_features,
@@ -20,7 +24,10 @@ from src.evaluation.visualization import (
 )
 from src.models.baseline_models import BaselineRegressionSuite
 from src.models.mlp_model import build_mlp_model, predict_mlp, train_mlp_model
-from src.models.persistence import save_baseline_models, save_mlp_model, save_preprocessor
+from src.models.persistence import (
+    file_sha256, load_mlp_model, load_preprocessor, publish_cli_run,
+    save_baseline_models, save_mlp_model, save_preprocessor,
+)
 from src.utils.logger import setup_logger
 
 
@@ -50,7 +57,7 @@ def parse_args(argv=None):
     parser.add_argument("--create-interactions", action="store_true")
     parser.add_argument("--data-path", type=Path, default=config.RAW_CSV_PATH)
     parser.add_argument("--output-dir", type=Path, default=config.BASE_DIR,
-                        help="Root for CLI data/processed, results and logs.")
+                        help="Root for isolated runs/ and results/latest_run.json.")
     args = parser.parse_args(argv)
     if not 0 <= args.random_state < 2**32:
         parser.error("--random-state must be in [0, 2**32).")
@@ -83,12 +90,26 @@ def demo_inference(model, preprocessor, X_sample, y_sample):
 
 def run_pipeline(args=None):
     """Split raw data first, train baselines then MLP, and evaluate test last."""
+    # CLI exports PNGs without a desktop/Tk runtime. Importing main in notebooks
+    # does not change their inline backend because this runs only on invocation.
+    import matplotlib
+    matplotlib.use("Agg")
     args = parse_args([]) if args is None else args
-    settings = ProjectConfig(BASE_DIR=Path(args.output_dir).resolve())
+    output_root = Path(args.output_dir).resolve()
+    started_at = datetime.now(timezone.utc)
+    run_id = f"{started_at:%Y%m%dT%H%M%S%fZ}_{uuid4().hex[:8]}"
+    run_dir = output_root / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    settings = replace(config, BASE_DIR=run_dir)
     settings.create_directories()
     logger = setup_logger(log_file=settings.LOG_FILE)
     logger.info("Chỉ số: MSE (USD²), RMSE/MAE (USD), R² (không đơn vị).")
     set_random_seed(args.random_state)
+    source_hash = file_sha256(args.data_path)
+    source_files = [config.BASE_DIR / "main.py", config.BASE_DIR / "requirements.txt",
+                    *sorted((config.BASE_DIR / "src").rglob("*.py"))]
+    source_hashes = {path.relative_to(config.BASE_DIR).as_posix(): file_sha256(path)
+                     for path in source_files}
     data, target = load_housing_data(args.data_path)
     # Xác định và khám phá tổng quan dữ liệu thô ban đầu (Data Understanding)
     raw_info = fetch_dataset_info(data, target)
@@ -101,10 +122,15 @@ def run_pipeline(args=None):
     logger.info("Biến mục tiêu '%s': min=%.0f USD, trung vị=%.0f USD, max=%.0f USD (đạt trần giá: %d mẫu)",
                 target, target_stats["min"], target_stats["50%"], target_stats["max"],
                 raw_info["target_max_count"])
-    logger.info("Cơ sở chia tập: Phân tầng theo phân vị biến mục tiêu để giữ cân bằng phân phối giá nhà.")
+    logger.info("Chia tập 80/10/10; phân tầng target=%s; số bins=%d/%d.",
+                settings.USE_STRATIFIED_SPLIT, settings.N_STRATIFY_BINS_TRAIN,
+                settings.N_STRATIFY_BINS_TEMP)
     # Chia dữ liệu thô trước mọi phép học thống kê và tạo đặc trưng.
     splits = split_data_8_1_1(data.drop(columns=target), data[target],
-                              random_state=args.random_state)
+                              random_state=args.random_state,
+                              stratify=settings.USE_STRATIFIED_SPLIT,
+                              n_bins_train=settings.N_STRATIFY_BINS_TRAIN,
+                              n_bins_temp=settings.N_STRATIFY_BINS_TEMP)
     X_train, X_val, X_test, y_train, y_val, y_test = splits
     logger.info("Số mẫu train/validation/test: %d/%d/%d", len(X_train), len(X_val), len(X_test))
     save_processed_splits(*splits, target_col=target, output_dir=settings.PROCESSED_DATA_DIR)
@@ -115,12 +141,14 @@ def run_pipeline(args=None):
     save_preprocessor(preprocessor, settings.PREPROCESSOR_PATH)
     suite = BaselineRegressionSuite(random_state=args.random_state,
                                     dt_max_depth=settings.DT_MAX_DEPTH,
-                                    rf_n_estimators=settings.RF_N_ESTIMATORS)
+                                    rf_n_estimators=settings.RF_N_ESTIMATORS,
+                                    fit_intercept=settings.LR_FIT_INTERCEPT)
     suite.fit_all(train_features, y_train)
     save_baseline_models(suite.models, settings.BASELINES_PATH)
     model = build_mlp_model(train_features.shape[1], learning_rate=args.lr)
     model, history = train_mlp_model(model, train_features, y_train, val_features, y_val,
-                                      epochs=args.epochs, batch_size=args.batch_size)
+                                      epochs=args.epochs, batch_size=args.batch_size,
+                                      verbose=settings.MLP_VERBOSE)
     logger.info("Điểm lưu (checkpoint) tốt nhất trên tập kiểm định: epoch %d, RMSE %.2f USD",
                 model.best_epoch, np.sqrt(model.best_val_loss))
     save_mlp_model(model, settings.MLP_MODEL_PATH)
@@ -162,10 +190,39 @@ def run_pipeline(args=None):
                                       settings.FIGURES_DIR / f"{slug}_actual_vs_predicted.png")
             plot_residuals_distribution(y_test, prediction, name,
                                          settings.FIGURES_DIR / f"{slug}_residuals.png")
-    demo = demo_inference(model, preprocessor, X_test, y_test)
+    restored_model = load_mlp_model(settings.MLP_MODEL_PATH)
+    restored_preprocessor = load_preprocessor(settings.PREPROCESSOR_PATH)
+    demo = demo_inference(restored_model, restored_preprocessor, X_test, y_test)
+    np.testing.assert_allclose(demo["Predicted_USD"], predictions["MLP PyTorch"][:len(demo)],
+                               rtol=1e-5, atol=1e-3)
     demo.to_csv(settings.METRICS_DIR / "sample_predictions.csv", index=False)
+    if file_sha256(args.data_path) != source_hash:
+        raise ValueError("Raw dataset changed during training; this run will not be published.")
+    effective_config = {**settings.to_dict(), "RANDOM_STATE": args.random_state,
+                        "MLP_EPOCHS": args.epochs, "MLP_BATCH_SIZE": args.batch_size,
+                        "MLP_LEARNING_RATE": args.lr, "apply_log": args.apply_log,
+                        "create_interactions": args.create_interactions, "skip_plots": args.skip_plots}
+    current_source_files = [config.BASE_DIR / "main.py", config.BASE_DIR / "requirements.txt",
+                            *sorted((config.BASE_DIR / "src").rglob("*.py"))]
+    current_hashes = {path.relative_to(config.BASE_DIR).as_posix(): file_sha256(path)
+                      for path in current_source_files}
+    if current_hashes != source_hashes:
+        raise ValueError("Source code changed during training; this run will not be published.")
+    manifest = publish_cli_run(output_root, run_dir, {
+        "started_at_utc": started_at.isoformat(),
+        "completed_at_utc": datetime.now(timezone.utc).isoformat(),
+        "raw_data": {"path": str(Path(args.data_path).resolve()), "sha256": source_hash},
+        "parameters": effective_config,
+        "feature_names": list(preprocessor.get_feature_names_out()),
+        "split_sizes": {"train": len(X_train), "validation": len(X_val), "test": len(X_test)},
+        "best_epoch": model.best_epoch,
+        "package_versions": {name: version(name) for name in ("numpy", "pandas", "torch", "scikit-learn")},
+        "source_sha256": source_hashes,
+    })
+    logger.info("Đã công bố bộ kết quả đồng bộ: %s", run_dir)
     logger.info("Hoàn thành pipeline; không dùng kết quả test để chỉnh mô hình.")
-    return {"raw_info": raw_info, "summary": summary, "validation_summary": validation_summary,
+    return {"run_dir": run_dir, "manifest": manifest,
+            "raw_info": raw_info, "summary": summary, "validation_summary": validation_summary,
             "history": history, "predictions": predictions, "splits": splits,
             "preprocessor": preprocessor, "model": model, "baselines": suite.models}
 

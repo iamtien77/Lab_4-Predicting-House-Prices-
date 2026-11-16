@@ -85,6 +85,7 @@ def test_pipeline_smoke_and_inference_round_trip(tmp_path, monkeypatch):
     monkeypatch.setattr(main.BaselineRegressionSuite, "fit_all", baseline_spy)
     monkeypatch.setattr(main, "train_mlp_model", training_spy)
     result = main.run_pipeline(args)
+    output = result["run_dir"]
     assert source.read_bytes() == original_bytes
     assert events.index("split") < events.index("fit_preprocessor")
     assert events.index("baselines_finished") < events.index("mlp_started")
@@ -128,6 +129,18 @@ def test_pipeline_smoke_and_inference_round_trip(tmp_path, monkeypatch):
         transform_features(restored_processor, sample.drop(columns="longitude"))
     with pytest.raises(FileNotFoundError):
         load_preprocessor(artifacts / "absent.joblib")
+
+    # A subsequent --skip-plots run must not inherit the first run's figures.
+    monkeypatch.undo()
+    args.skip_plots = True
+    second = main.run_pipeline(args)
+    assert second["run_dir"] != output
+    assert len(list((output / "results/figures").glob("*.png"))) == 15
+    assert not list((second["run_dir"] / "results/figures").glob("*.png"))
+    from src.models.persistence import load_cli_run
+    latest = load_cli_run(args.output_dir)
+    assert latest["run_dir"] == second["run_dir"]
+    assert latest["manifest"]["parameters"]["skip_plots"] is True
 
 
 @pytest.mark.parametrize("option,value", [
