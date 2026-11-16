@@ -1,4 +1,4 @@
-"""Regression figures for inline notebooks and optional CLI exports."""
+"""Xuất các biểu đồ trực quan hóa hồi quy cho Jupyter Notebook và giao diện dòng lệnh CLI."""
 
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ def _paired_values(y_true, y_pred):
 
 def plot_actual_vs_predicted(y_true, y_pred, model_name="MLP PyTorch",
                              mse=None, r2=None, save_path=None, dpi=300):
-    """Return a scatter figure; save only when a path is explicitly supplied."""
+    """Vẽ biểu đồ phân tán Giá thực tế so với Giá dự đoán kèm đường chuẩn y = x."""
     actual, predicted = _paired_values(y_true, y_pred)
     figure, axis = plt.subplots(figsize=(7, 5))
     axis.scatter(actual, predicted, alpha=0.3, s=12, rasterized=True)
@@ -42,7 +42,7 @@ def plot_actual_vs_predicted(y_true, y_pred, model_name="MLP PyTorch",
 
 
 def plot_loss_and_mae_curves(history, save_path=None, dpi=300):
-    """Accept a metric dictionary or a history-compatible object and return learning curves."""
+    """Nhận từ điển lịch sử huấn luyện hoặc đối tượng tương thích để vẽ đường cong học tập (Loss và MAE)."""
     values = history.history if hasattr(history, "history") else history
     keys = ("loss", "val_loss", "mae", "val_mae")
     arrays = {key: np.asarray(values[key], dtype=float) for key in keys}
@@ -63,7 +63,7 @@ def plot_loss_and_mae_curves(history, save_path=None, dpi=300):
 
 
 def plot_model_comparison_bar(summary_df, save_path=None, dpi=300):
-    """Return separate axes for metrics with different units."""
+    """Vẽ biểu đồ cột so sánh các mô hình trên từng trục riêng biệt theo đơn vị đo."""
     figure, axes = plt.subplots(2, 2, figsize=(12, 8))
     for axis, key, unit in zip(axes.flat, ("MSE", "RMSE", "MAE", "R2_Score"),
                                ("USD²", "USD", "USD", "unitless")):
@@ -81,7 +81,7 @@ def plot_model_comparison_bar(summary_df, save_path=None, dpi=300):
 
 def plot_residuals_distribution(y_true, y_pred, model_name="MLP PyTorch",
                                 save_path=None, dpi=300):
-    """Describe residuals without asserting a normal distribution."""
+    """Trực quan hóa phân phối phần dư (residuals) và biểu đồ phân tán phần dư theo giá trị dự đoán."""
     actual, predicted = _paired_values(y_true, y_pred)
     figure, axis = plt.subplots(figsize=(7, 4))
     axis.hist(actual - predicted, bins=40, color="steelblue", edgecolor="white")
@@ -92,7 +92,7 @@ def plot_residuals_distribution(y_true, y_pred, model_name="MLP PyTorch",
 
 
 def plot_feature_distributions(df, columns=None, save_path=None, dpi=300):
-    """Plot histograms for all numeric features to assess skewness and scale."""
+    """Vẽ biểu đồ phân phối tần suất (Histogram) cho tất cả các đặc trưng dạng số."""
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas DataFrame.")
     numeric_df = df.select_dtypes(include=[np.number])
@@ -121,7 +121,7 @@ def plot_feature_distributions(df, columns=None, save_path=None, dpi=300):
 
 
 def plot_geographical_distribution(df, target_col="median_house_value", save_path=None, dpi=300):
-    """Plot California geographical map with coordinates, prices, and population."""
+    """Vẽ bản đồ địa lý California kết hợp tọa độ, mức giá và quy mô dân số."""
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas DataFrame.")
     for req in ("longitude", "latitude"):
@@ -153,7 +153,7 @@ def plot_geographical_distribution(df, target_col="median_house_value", save_pat
 
 
 def plot_correlation_heatmap(df, target_col="median_house_value", save_path=None, dpi=300):
-    """Plot Pearson correlation heatmap across numeric features."""
+    """Vẽ ma trận tương quan nhiệt Pearson giữa các đặc trưng dạng số và biến mục tiêu."""
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas DataFrame.")
     numeric_df = df.select_dtypes(include=[np.number])
@@ -170,7 +170,7 @@ def plot_correlation_heatmap(df, target_col="median_house_value", save_path=None
 
 
 def plot_target_distribution(df_or_series, target_col="median_house_value", save_path=None, dpi=300):
-    """Plot target distribution histogram and boxplot highlighting price ceiling."""
+    """Vẽ biểu đồ phân phối và biểu đồ hộp của biến mục tiêu, làm rõ hiện tượng trần giá."""
     if isinstance(df_or_series, pd.DataFrame):
         if target_col not in df_or_series.columns:
             raise ValueError(f"Column '{target_col}' not found in DataFrame.")
@@ -182,7 +182,7 @@ def plot_target_distribution(df_or_series, target_col="median_house_value", save
 
     figure, axes = plt.subplots(1, 2, figsize=(13, 5))
 
-    # Histogram
+    # Biểu đồ phân bố tần suất (Histogram)
     axes[0].hist(series, bins=45, color="steelblue", edgecolor="white", alpha=0.85)
     axes[0].axvline(500001, color="red", linestyle="--", linewidth=1.5, label="Trần giá ($500,001)")
     axes[0].set_xlabel("Giá nhà trung vị (USD)", fontsize=11)
@@ -191,7 +191,7 @@ def plot_target_distribution(df_or_series, target_col="median_house_value", save
     axes[0].legend()
     axes[0].grid(alpha=0.2)
 
-    # Boxplot
+    # Biểu đồ hộp (Boxplot)
     axes[1].boxplot(series, patch_artist=True,
                     boxprops=dict(facecolor="lightblue", color="steelblue"),
                     medianprops=dict(color="red", linewidth=2))
@@ -204,7 +204,7 @@ def plot_target_distribution(df_or_series, target_col="median_house_value", save
 
 
 def plot_categorical_distribution(df, cat_col="ocean_proximity", target_col="median_house_value", save_path=None, dpi=300):
-    """Plot counts and price comparison across categorical groups."""
+    """Vẽ biểu đồ cột số lượng và phân bố giá nhà theo từng nhóm danh mục vị trí biển."""
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas DataFrame.")
     if cat_col not in df.columns:
@@ -215,7 +215,7 @@ def plot_categorical_distribution(df, cat_col="ocean_proximity", target_col="med
     figure, axes = plt.subplots(1, n_axes, figsize=(7 * n_axes, 5))
     axes = np.atleast_1d(axes)
 
-    # Bar chart counts
+    # Biểu đồ cột đếm tần suất các nhóm
     counts = df[cat_col].value_counts(dropna=False)
     bars = axes[0].bar(counts.index.astype(str), counts.values, color="steelblue", edgecolor="white")
     axes[0].bar_label(bars, fmt="%d", padding=3, fontsize=9)
@@ -225,7 +225,7 @@ def plot_categorical_distribution(df, cat_col="ocean_proximity", target_col="med
     axes[0].tick_params(axis="x", labelrotation=20)
     axes[0].grid(alpha=0.2)
 
-    # Boxplot by category if target present
+    # Biểu đồ hộp theo từng nhóm nếu có biến mục tiêu
     if has_target:
         categories = counts.index.dropna().tolist()
         group_data = [df[df[cat_col] == c][target_col].dropna().values for c in categories]

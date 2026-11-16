@@ -1,4 +1,4 @@
-"""Persist trusted local estimators and their fitted preprocessing objects."""
+"""Lưu trữ và nạp các mô hình ước lượng cục bộ an toàn cùng đối tượng tiền xử lý đã khớp."""
 
 from pathlib import Path
 import hashlib
@@ -28,7 +28,7 @@ def _require_file(filepath):
 
 
 def save_mlp_model(model, filepath):
-    """Save weights, target statistics and architecture, never a Python model."""
+    """Lưu trọng số mô hình, thống kê chuẩn hóa target và thông tin kiến trúc (không lưu đối tượng Python model thô)."""
     from src.models.mlp_model import HousePriceMLP
     if Path(filepath).suffix != ".pt":
         raise ValueError("MLP artifacts must use the .pt extension.")
@@ -43,7 +43,7 @@ def save_mlp_model(model, filepath):
 
 
 def load_mlp_model(filepath):
-    """Restore a validated weights-only checkpoint on CPU for inference."""
+    """Khôi phục checkpoint an toàn chỉ gồm trọng số lên CPU phục vụ suy luận."""
     from src.models.mlp_model import build_mlp_model
     checkpoint = torch.load(_require_file(filepath), map_location="cpu", weights_only=True)
     required = {"format_version", "input_dim", "hidden_units", "learning_rate",
@@ -79,13 +79,13 @@ def _validate_baselines(models):
 
 
 def save_baseline_models(baseline_models, filepath):
-    """Save all fitted baselines from the same training run."""
+    """Lưu toàn bộ các mô hình baseline đã fit trong cùng phiên huấn luyện."""
     _validate_baselines(baseline_models)
     joblib.dump(baseline_models, _prepare_path(filepath))
 
 
 def load_baseline_models(filepath):
-    """Load and validate trusted local baseline estimators."""
+    """Nạp và xác thực các mô hình baseline cục bộ tin cậy."""
     models = joblib.load(_require_file(filepath))
     _validate_baselines(models)
     return models
@@ -100,20 +100,20 @@ def _validate_preprocessor(preprocessor):
 
 
 def save_preprocessor(preprocessor, filepath):
-    """Save the complete fitted preprocessing object, including optional features."""
+    """Lưu toàn bộ đối tượng tiền xử lý đã khớp, bao gồm cả kỹ thuật tạo đặc trưng tùy chọn."""
     _validate_preprocessor(preprocessor)
     joblib.dump(preprocessor, _prepare_path(filepath))
 
 
 def load_preprocessor(filepath):
-    """Load a trusted local preprocessor and verify its fitted state."""
+    """Nạp bộ tiền xử lý cục bộ và xác thực trạng thái đã fit."""
     preprocessor = joblib.load(_require_file(filepath))
     _validate_preprocessor(preprocessor)
     return preprocessor
 
 
 def file_sha256(filepath):
-    """Fingerprint local data and artifacts without loading them into memory."""
+    """Tính mã băm SHA256 cho dữ liệu và artifact cục bộ theo khối mà không nạp toàn bộ vào bộ nhớ."""
     digest = hashlib.sha256()
     with Path(filepath).open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -122,7 +122,7 @@ def file_sha256(filepath):
 
 
 def _atomic_json(path, value):
-    """Publish a complete JSON file with a same-directory atomic replacement."""
+    """Xuất bản tệp JSON hoàn chỉnh bằng cơ chế thay thế nguyên tử trong cùng thư mục."""
     path = _prepare_path(path)
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     with temporary.open("x", encoding="utf-8") as stream:
@@ -141,7 +141,7 @@ def _contained_path(root, relative):
 
 
 def verify_cli_run(run_dir):
-    """Verify a completed run before deserializing any estimator."""
+    """Xác thực tính toàn vẹn của một phiên chạy CLI hoàn tất trước khi giải tuần tự hóa mô hình."""
     run_dir = Path(run_dir).resolve()
     manifest = json.loads(_require_file(run_dir / "manifest.json").read_text(encoding="utf-8"))
     required_files = {
@@ -162,7 +162,7 @@ def verify_cli_run(run_dir):
 
 
 def publish_cli_run(output_root, run_dir, metadata):
-    """Publish only a complete verified run; older runs are never overwritten."""
+    """Chỉ xuất bản phiên chạy đã xác thực đầy đủ; không bao giờ ghi đè lên các lần chạy trước đó."""
     output_root, run_dir = Path(output_root).resolve(), Path(run_dir).resolve()
     if not run_dir.is_relative_to(output_root / "runs"):
         raise ValueError("CLI runs must be stored below output_root/runs.")
@@ -183,11 +183,11 @@ def publish_cli_run(output_root, run_dir, metadata):
 
 
 def load_cli_run(output_root, *, run_dir=None):
-    """Load a trusted CLI run as a verified preprocessor/model set.
+    """Nạp một phiên chạy CLI tin cậy dưới dạng tập hợp bộ tiền xử lý và mô hình đã được xác thực.
 
-    Without run_dir, resolve the latest successfully published run. Explicit
-    run_dir is relative to output_root and enables reproducible older runs.
-    Low-level loaders remain available for notebooks with their own manifests.
+    Khi không truyền run_dir, giải quyết theo lần chạy hoàn tất mới nhất. run_dir
+    tường minh tương đối với output_root và cho phép tái lập các lần chạy cũ.
+    Các loader cấp thấp vẫn sẵn sàng phục vụ các notebook có manifest riêng.
     """
     output_root = Path(output_root).resolve()
     if run_dir is None:

@@ -1,4 +1,4 @@
-"""Compute regression metrics in original target units."""
+"""Tính toán các độ đo hồi quy theo đơn vị gốc của biến mục tiêu (USD và USD²)."""
 
 import numpy as np
 import pandas as pd
@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score
 
 
 class RegressionEvaluator:
-    """Validate prediction pairs and produce comparable model summaries."""
+    """Xác thực các cặp giá trị thực tế/dự đoán và tổng hợp bảng so sánh hiệu năng các mô hình."""
 
     @staticmethod
     def _validate_pair(y_true, y_pred):
@@ -43,7 +43,7 @@ class RegressionEvaluator:
 
     @classmethod
     def evaluate_predictions(cls, y_true, y_pred, model_name):
-        """Retain full precision so sorting does not depend on rounding."""
+        """Tính toán các chỉ số với độ chính xác số thực đầy đủ để việc xếp hạng không bị ảnh hưởng bởi làm tròn."""
         return {"Model": model_name, "MSE": cls.calculate_mse(y_true, y_pred),
                 "RMSE": cls.calculate_rmse(y_true, y_pred),
                 "MAE": cls.calculate_mae(y_true, y_pred),

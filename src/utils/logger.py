@@ -1,4 +1,4 @@
-"""Console/file logging and execution timing."""
+"""Hệ thống ghi log ra console/file và đo thời gian thực thi."""
 
 from functools import wraps
 import logging
@@ -7,7 +7,7 @@ import time
 
 
 def setup_logger(name="HousePriceMLP", log_file=None, level=logging.INFO):
-    """Configure one set of handlers, including when the output path changes."""
+    """Cấu hình tập hợp handlers ghi log, xử lý an toàn khi thay đổi đường dẫn tệp log."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.propagate = False
@@ -27,7 +27,7 @@ def setup_logger(name="HousePriceMLP", log_file=None, level=logging.INFO):
 
 
 def log_step(step_name):
-    """Log elapsed time and propagate errors without claiming success."""
+    """Decorator ghi log thời gian thực thi và lan truyền ngoại lệ nếu phát sinh lỗi."""
     def decorator(function):
         @wraps(function)
         def wrapper(*args, **kwargs):

@@ -1,4 +1,4 @@
-"""CPU PyTorch regression with train-only target scaling and USD predictions."""
+"""Mô hình hồi quy MLP trên CPU bằng PyTorch với chuẩn hóa target chỉ trên tập train và suy luận theo USD."""
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ from src.config import config
 
 
 class HousePriceMLP(nn.Module):
-    """Forward predicts standardized targets; public prediction returns USD."""
+    """Mạng nơ-ron nhiều tầng dự đoán target đã chuẩn hóa; hàm dự đoán công khai trả về đơn vị USD."""
 
     def __init__(self, input_dim, learning_rate=0.001):
         super().__init__()
@@ -32,7 +32,7 @@ class HousePriceMLP(nn.Module):
 
 
 def build_mlp_model(input_dim: int, learning_rate=None):
-    """Build the fixed 32/16/1 network on CPU."""
+    """Khởi tạo mạng nơ-ron kiến trúc cố định 32 -> 16 -> 1 trên CPU."""
     return HousePriceMLP(input_dim, config.MLP_LEARNING_RATE if learning_rate is None else learning_rate)
 
 
@@ -44,7 +44,7 @@ def _features(model, X):
 
 
 def _epoch_metrics(model, features, targets, batch_size):
-    """Evaluate a fixed epoch snapshot, weighting every sample equally."""
+    """Đánh giá trạng thái snapshot tại cuối epoch, tính trọng số đều cho mọi mẫu dữ liệu."""
     model.eval()
     squared_error = absolute_error = 0.0
     with torch.inference_mode():
@@ -62,11 +62,11 @@ def _epoch_metrics(model, features, targets, batch_size):
 
 def train_mlp_model(model, X_train, y_train, X_val, y_val,
                     epochs=None, batch_size=None, verbose=None):
-    """Fit scaling on train, run all epochs, restore lowest validation MSE.
+    """Khớp TargetScaler trên tập train, huấn luyện đủ số epochs và khôi phục checkpoint có MSE validation thấp nhất.
 
-    History contains end-of-epoch MSE (USD²) and MAE (USD), not the
-    standardized objective optimized by Adam. Calling again refits target
-    statistics and resets Adam, but continues from existing network weights.
+    Lịch sử training chứa MSE (USD²) và MAE (USD) cuối mỗi epoch, không phải
+    hàm mục tiêu chuẩn hóa dùng để tối ưu bằng Adam. Khi gọi lại hàm sẽ khớp lại
+    thống kê target và đặt lại Adam, nhưng kế thừa trọng số mạng hiện có.
     """
     epochs = config.MLP_EPOCHS if epochs is None else epochs
     batch_size = config.MLP_BATCH_SIZE if batch_size is None else batch_size
@@ -122,7 +122,7 @@ def train_mlp_model(model, X_train, y_train, X_val, y_val,
 
 
 def evaluate_mlp_model(model, X_test, y_test):
-    """Return test MSE in USD² and MAE in USD without changing weights."""
+    """Trả về MSE kiểm thử theo đơn vị USD² và MAE theo đơn vị USD mà không làm thay đổi trọng số mạng."""
     X_test, y_test = check_X_y(X_test, y_test, y_numeric=True)
     error = predict_mlp(model, X_test) - np.asarray(y_test, dtype=np.float64)
     metrics = {"test_mse": float(np.mean(error ** 2)), "test_mae": float(np.mean(np.abs(error)))}
@@ -132,7 +132,7 @@ def evaluate_mlp_model(model, X_test, y_test):
 
 
 def predict_mlp(model, X):
-    """Return finite USD predictions with shape (N,), including one sample."""
+    """Trả về mảng dự đoán giá nhà hữu hạn theo đơn vị USD với kích thước (N,), hỗ trợ cả trường hợp một mẫu."""
     if not model.is_fitted:
         raise ValueError("The MLP must be trained before prediction.")
     features = _features(model, X)

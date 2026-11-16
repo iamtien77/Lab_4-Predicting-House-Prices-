@@ -1,4 +1,4 @@
-"""Train the three reference regression models on a shared feature matrix."""
+"""Huấn luyện ba mô hình hồi quy đường cơ sở (Baseline) trên cùng ma trận đặc trưng chuẩn hóa."""
 
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
@@ -9,7 +9,7 @@ from src.config import config
 
 
 class BaselineRegressionSuite:
-    """Provide ordered training and prediction for the baseline models."""
+    """Quản lý quy trình huấn luyện và dự đoán theo thứ tự cố định cho các mô hình baseline."""
 
     def __init__(self, random_state=None, dt_max_depth=None, rf_n_estimators=None, fit_intercept=None):
         random_state = config.RANDOM_STATE if random_state is None else random_state
@@ -24,7 +24,7 @@ class BaselineRegressionSuite:
         self.is_fitted = False
 
     def fit_all(self, X_train, y_train):
-        """Fit models in baseline order and return the fitted model mapping."""
+        """Khớp (fit) các mô hình theo thứ tự baseline và trả về từ điển ánh xạ các mô hình đã huấn luyện."""
         X_train, y_train = check_X_y(X_train, y_train, y_numeric=True)
         self.is_fitted = False
         for name, model in self.models.items():
@@ -34,7 +34,7 @@ class BaselineRegressionSuite:
         return self.models
 
     def predict_all(self, X):
-        """Return one finite prediction vector per fitted model."""
+        """Trả về vector dự đoán giá trị hữu hạn trên từng mô hình đã huấn luyện."""
         if not self.is_fitted:
             raise ValueError("Baseline models must be fitted before prediction.")
         X = check_array(X)
@@ -48,5 +48,5 @@ class BaselineRegressionSuite:
         return predictions
 
     def get_model(self, name):
-        """Return a named estimator; unknown names raise KeyError."""
+        """Lấy mô hình theo tên định danh; báo lỗi KeyError nếu tên không tồn tại."""
         return self.models[name]

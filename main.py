@@ -1,4 +1,4 @@
-"""CLI orchestration; notebooks call the same reusable modules in src."""
+"""Điều phối luồng thực thi CLI; các notebook gọi chung các mô-đun dùng lại trong src."""
 
 import argparse
 from dataclasses import replace
@@ -46,7 +46,7 @@ def _positive_float(value):
 
 
 def parse_args(argv=None):
-    """Parse overrides forwarded to the actual training operations."""
+    """Phân tích các tham số dòng lệnh ghi đè chuyển tiếp vào quá trình huấn luyện."""
     parser = argparse.ArgumentParser(description="Train and evaluate California Housing regressors.")
     parser.add_argument("--epochs", type=_positive_int, default=config.MLP_EPOCHS)
     parser.add_argument("--batch-size", type=_positive_int, default=config.MLP_BATCH_SIZE)
@@ -65,7 +65,7 @@ def parse_args(argv=None):
 
 
 def set_random_seed(seed):
-    """Seed the CPU experiment and request deterministic PyTorch operations."""
+    """Thiết lập seed ngẫu nhiên cho CPU và yêu cầu chế độ thực thi tất định trong PyTorch."""
     import random
     import torch
     random.seed(seed)
@@ -75,7 +75,7 @@ def set_random_seed(seed):
 
 
 def demo_inference(model, preprocessor, X_sample, y_sample):
-    """Return up to three predictions from raw held-out rows without refitting."""
+    """Dự đoán mẫu trên tối đa ba hàng dữ liệu kiểm thử độc lập mà không fit lại bộ tiền xử lý."""
     if not X_sample.index.equals(y_sample.index):
         raise ValueError("Sample features and target indexes must match.")
     sample = X_sample.iloc[:3]
@@ -89,9 +89,9 @@ def demo_inference(model, preprocessor, X_sample, y_sample):
 
 
 def run_pipeline(args=None):
-    """Split raw data first, train baselines then MLP, and evaluate test last."""
-    # CLI exports PNGs without a desktop/Tk runtime. Importing main in notebooks
-    # does not change their inline backend because this runs only on invocation.
+    """Chia dữ liệu thô trước, huấn luyện baseline rồi tới MLP, và đánh giá tập test cuối cùng."""
+    # CLI xuất đồ thị PNG mà không cần môi trường giao diện desktop/Tkinter. Việc import main trong notebook
+    # không làm thay đổi backend nội dòng (inline) của notebook vì lệnh này chỉ kích hoạt khi thực thi CLI.
     import matplotlib
     matplotlib.use("Agg")
     args = parse_args([]) if args is None else args
