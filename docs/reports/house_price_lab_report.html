@@ -1,0 +1,334 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lab 4 — MLP Regression: House Price Prediction</title><style>
+:root {
+  color-scheme: light;
+  --ink: #1f2d3d;
+  --muted: #52637a;
+  --accent: #1e5966;
+  --accent-light: #eaf2f5;
+  --line: #d1dde5;
+  --soft: #f4f8fa;
+  --card-bg: #ffffff;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 20px; }
+body {
+  margin: 0;
+  background: #e9eff2;
+  color: var(--ink);
+  font: 16px/1.75 "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+}
+.paper {
+  max-width: 1140px;
+  margin: 28px auto;
+  padding: 48px 56px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+}
+header {
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 25px;
+}
+.eyebrow {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+h1 {
+  font-size: 2.2rem;
+  line-height: 1.25;
+  margin: 10px 0 16px;
+  color: #143540;
+}
+h2 {
+  font-size: 1.45rem;
+  line-height: 1.4;
+  margin: 40px 0 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  color: #1a4350;
+}
+h3 {
+  font-size: 1.15rem;
+  margin: 26px 0 10px;
+  color: var(--accent);
+}
+p { margin: 0 0 14px; }
+li { margin-bottom: 8px; }
+ul, ol { padding-left: 24px; }
+.subtitle {
+  font-size: 1.15rem;
+  color: var(--muted);
+  font-weight: 400;
+  margin-bottom: 16px;
+}
+.source, figcaption, footer {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+a {
+  color: #125e8a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+nav {
+  padding: 18px 24px 20px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 28px 0;
+}
+nav h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+nav ol {
+  columns: 2;
+  column-gap: 36px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+nav li {
+  break-inside: avoid;
+  margin-bottom: 6px;
+}
+.note, .qa {
+  background: #f1f6f8;
+  border-left: 4px solid var(--accent);
+  padding: 16px 20px;
+  margin: 22px 0;
+  border-radius: 0 6px 6px 0;
+}
+.qa p { margin: 8px 0 0; }
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+.meta span {
+  background: var(--soft);
+  padding: 6px 12px;
+  font-size: 0.86rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 20px 0;
+}
+.flow span {
+  padding: 10px 14px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 0.92rem;
+  text-align: center;
+}
+.flow b {
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+  background: #edf2f5;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+pre {
+  padding: 16px 20px;
+  background: #edf2f5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+pre code {
+  padding: 0;
+  background: transparent;
+}
+.formula {
+  background: #faf9f5;
+  border: 1px solid #e8e2d5;
+  border-left: 4px solid #bfa15f;
+  padding: 16px 22px;
+  margin: 20px 0;
+  border-radius: 0 6px 6px 0;
+  line-height: 1.9;
+}
+.table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 18px 0;
+}
+.table-wrap table { margin: 0; }
+caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 8px;
+  color: var(--muted);
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+thead th {
+  background: #e9f0f3;
+  color: #173b47;
+  font-weight: 600;
+}
+tbody tr:nth-child(even) {
+  background: #fbfdfe;
+}
+.matrix td {
+  text-align: center;
+}
+figure {
+  margin: 26px 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  background: #fafcff;
+}
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: auto;
+  border-radius: 4px;
+}
+figcaption {
+  padding-top: 10px;
+  text-align: center;
+}
+footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  body { font-size: 15px; }
+  .paper { margin: 0; padding: 24px 18px; border: 0; border-radius: 0; }
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.3rem; }
+  nav ol { columns: 1; }
+  .flow { gap: 8px; }
+  .flow span { width: auto; max-width: none; font-size: 0.85rem; padding: 8px 10px; }
+  th, td { padding: 7px; }
+  table { font-size: 0.8rem; }
+}
+
+@media print {
+  @page { size: A4; margin: 16mm 14mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: #fff; font-size: 10pt; line-height: 1.5; color: #000; }
+  .paper { max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; }
+  h1 { font-size: 20pt; }
+  h2 { font-size: 14pt; page-break-after: avoid; }
+  h3 { font-size: 11pt; page-break-after: avoid; }
+  h1, h2, h3, caption { break-after: avoid; }
+  tr, figure, .qa, .formula, .note { break-inside: avoid; }
+  thead { display: table-header-group; }
+  table { font-size: 8.5pt; }
+  th, td { padding: 5px 8px; }
+  pre { font-size: 8pt; }
+  a { color: inherit; text-decoration: none; }
+  img { max-height: 160mm; object-fit: contain; }
+  nav { display: none; }
+  .flow { display: flex !important; flex-wrap: wrap !important; gap: 6px 8px !important; align-items: center !important; margin: 12px 0 !important; page-break-inside: avoid; break-inside: avoid; }
+  .flow span { display: inline-block !important; width: auto !important; max-width: none !important; padding: 6px 10px !important; font-size: 8.5pt !important; border: 1px solid #c8d3d9 !important; background: #f4f8fa !important; border-radius: 4px !important; text-align: center !important; }
+  .flow b { display: inline-block !important; color: #1e5966 !important; font-size: 9.5pt !important; margin: 0 2px !important; }
+  .note, .qa { background: #f1f6f8 !important; border-left: 4px solid #1e5966 !important; }
+  .formula { background: #faf9f5 !important; border: 1px solid #e8e2d5 !important; border-left: 4px solid #bfa15f !important; }
+}
+
+.formula { overflow-x: auto; }
+.formula math { font-size: 1.15em; margin: 1em 0; text-align: left; }
+</style></head><body><main class="paper">
+<header><p class="eyebrow">Bài thực hành môn Học máy — Lab 4</p><h1>MLP Regression – House Price Prediction</h1><p class="subtitle">Dự đoán giá trị nhà trung vị: thiết kế thí nghiệm, kết quả và giới hạn</p><p>Báo cáo giải thích đường đi từ dữ liệu thô đến dự đoán, đối chiếu MLP với mô hình cổ điển và phân tích kết quả trong phạm vi một bài thực hành. Các nhận định được gắn với mã nguồn và artifacts thực tế, không giả định mạng nơ-ron phải là mô hình tốt nhất.</p><div class="meta"><span>20.640 mẫu</span><span>Train / Validation / Test: 80 / 10 / 10</span><span>13 features sau preprocessing</span><span>PyTorch trên CPU</span><span>Seed: 42</span></div><div class="note"><strong>Phạm vi bằng chứng:</strong> Số liệu và hình thuộc cùng run <code>20261116T113754704337Z_36457503</code>, hoàn tất ngày 16/11/2026. Manifest và hash của 25 artifacts được đối chiếu khi biên soạn. Kết quả đã đo được phân biệt với cải tiến chưa thực hiện. Đây là báo cáo lab, chưa xác nhận hệ thống định giá trong vận hành.</div></header>
+<nav aria-label="Mục lục"><h2>Mục lục</h2><ol><li><a href="#s51">5.1 Introduction</a></li><li><a href="#s52">5.2 Dataset Description and Project Architecture</a></li><li><a href="#s53">5.3 Exploratory Data Analysis and Data Quality Assessment</a></li><li><a href="#s54">5.4 Data Preprocessing and Evaluation Protocol</a></li><li><a href="#s55">5.5 Feature Engineering and Data Representation</a></li><li><a href="#s56">5.6 Model Development and Selection</a></li><li><a href="#s57">5.7 Model Evaluation and Result Analysis</a></li><li><a href="#s58">5.8 Model Persistence, Inference, and Reproducibility</a></li><li><a href="#s59">5.9 Limitations and Future Work</a></li><li><a href="#s510">5.10 Conclusion</a></li></ol></nav>
+<section id="s51"><h2>5.1 Introduction</h2>
+<h3>5.1.1 Problem Definition</h3><p>Bài lab dự đoán <code>median_house_value</code> từ đặc trưng của một khu dân cư California. Đầu vào gồm vị trí, quy mô nhà ở, dân số, thu nhập và vị trí tương đối với biển; đầu ra là giá trị liên tục theo USD. Đơn vị quan sát là khu dân cư, không phải từng căn nhà. Vì vậy dự đoán không được hiểu là giá giao dịch cụ thể của một bất động sản.</p>
+<h3>5.1.2 Business Context: Real Estate Valuation and Cost of Mispricing</h3><p>Ước lượng giá có thể hỗ trợ tham khảo khi so sánh khu vực. Định giá thấp có thể làm giảm lợi ích bên bán; định giá cao có thể tăng chi phí bên mua hoặc kéo dài giao dịch. Tuy nhiên lab không có dữ liệu giao dịch và hàm chi phí kinh doanh để lượng hóa hậu quả đó. MSE đối xử đối xứng với hai hướng sai số, nên thí nghiệm hiện tại đánh giá độ chính xác thống kê.</p>
+<h3>5.1.3 Objectives and Scope of the Lab</h3><p>Mục tiêu là thực hiện và giải thích được pipeline hồi quy: kiểm tra dữ liệu, chia tập, tiền xử lý, huấn luyện MLP, đối chiếu mô hình cổ điển, phân tích lỗi và lưu/nạp mô hình. MLP là trọng tâm học tập; mô hình có sai số thấp nhất không nhất thiết là MLP. Phạm vi là thực nghiệm cục bộ với một dataset, một seed và một cấu hình tham chiếu.</p>
+<h3>5.1.4 Machine Learning Task Formulation</h3><p>Đây là supervised regression. Với các cặp (xᵢ, yᵢ), mô hình học hàm fθ(x) để dự đoán gần giá trị quan sát trên dữ liệu chưa dùng để fit. LR là đối chứng tuyến tính; DT, RF và MLP bổ sung các cách biểu diễn phi tuyến. Test ước lượng khả năng tổng quát hóa theo thiết kế chia mẫu của lab, chưa chứng minh hiệu quả trên thời điểm hoặc địa phương khác.</p></section>
+<section id="s52"><h2>5.2 Dataset Description and Project Architecture</h2>
+<h3>5.2.1 Data Source and Dataset Substitution Rationale</h3><p>Đề cương gốc đề cập Boston Housing. <a href="https://scikit-learn.org/1.0/modules/generated/sklearn.datasets.load_boston.html">Tài liệu scikit-learn</a> ghi <code>load_boston</code> deprecated từ 1.0 và dự kiến bị gỡ ở 1.2, đồng thời giải thích vấn đề đạo đức của dataset. Triển khai dùng file cục bộ <code>data/raw/housing.csv</code>. Thay dataset giữ mục tiêu học hồi quy nhưng đổi schema, quy mô và đơn vị target; không so sánh trực tiếp MSE với ví dụ Boston.</p><p>CSV có 8 numeric features, <code>ocean_proximity</code> và target USD. Không mô tả nó như đầu ra nguyên dạng của <code>fetch_california_housing()</code> vì schema khác nhau. Loader không tải dữ liệu từ mạng. Hồ sơ hiện có chưa đủ để xác minh độc lập chuỗi nguồn gốc CSV; báo cáo không tự gán URL tải xuống chưa được kiểm chứng.</p>
+<h3>5.2.2 Dataset Structure and Feature Semantics</h3><p>Dữ liệu gồm 20.640 dòng, 9 features và một target. Các biến tổng mô tả toàn khu vực nên phụ thuộc quy mô khu dân cư. <code>median_income</code> cần được hiểu theo đơn vị mã hóa của nguồn, không mặc nhiên là thu nhập USD thô.</p><div class="table-wrap"><table><thead><tr><th>Nhóm</th><th>Cột</th><th>Ý nghĩa</th></tr></thead><tbody><tr><td>Địa lý</td><td>longitude, latitude</td><td>Tọa độ khu dân cư</td></tr><tr><td>Nhà ở</td><td>housing_median_age</td><td>Tuổi nhà trung vị</td></tr><tr><td>Quy mô</td><td>total_rooms, total_bedrooms, population, households</td><td>Tổng số phòng, phòng ngủ, dân số và hộ</td></tr><tr><td>Kinh tế</td><td>median_income</td><td>Thu nhập trung vị theo đơn vị của nguồn</td></tr><tr><td>Phân loại</td><td>ocean_proximity</td><td>Nhóm vị trí tương đối với biển</td></tr><tr><td>Target</td><td>median_house_value</td><td>Giá trị nhà trung vị của khu vực, USD</td></tr></tbody></table></div>
+<h3>5.2.3 End-to-End Pipeline Architecture</h3><div class="flow"><span>CSV và audit</span><b>→</b><span>Train / Val / Test</span><b>→</b><span>Fit preprocessor trên train</span><b>→</b><span>Baseline và MLP</span><b>→</b><span>Validation và checkpoint</span><b>→</b><span>Test và artifacts</span></div><p>Mỗi CLI run có thư mục riêng. Manifest ghi cấu hình, versions, feature names và hashes để kiểm tra tính nhất quán. Cách tổ chức này tránh ghép bảng của cấu hình này với hình của cấu hình khác.</p>
+<h3>5.2.4 Codebase Boundaries: Main Pipeline vs. Exploration Modules</h3><p><code>main.py</code> điều phối CLI; <code>src/data/</code> kiểm tra và tiền xử lý; <code>src/features/</code> chứa biến đổi tùy chọn; <code>src/models/</code> chứa mô hình và persistence; <code>src/evaluation/</code> tính metrics, vẽ hình. Notebook phục vụ khám phá, không mặc nhiên thay thế số liệu CLI. Báo cáo dùng cùng run được con trỏ latest_run chọn tại thời điểm biên soạn.</p>
+<h3>5.2.5 Tools, Libraries, and Experimental Environment</h3><p>Triển khai thực tế dùng <strong>PyTorch trên CPU</strong>, không phải TensorFlow/Keras. pandas, NumPy xử lý dữ liệu; scikit-learn cung cấp preprocessing và mô hình cổ điển; Matplotlib xuất hình. Manifest ghi NumPy 2.5.4, pandas 3.1.1, torch 2.15.0 và scikit-learn 1.9.1. Đây là môi trường đã ghi nhận, không phải cam kết tương thích với mọi phiên bản.</p></section>
+<section id="s53"><h2>5.3 Exploratory Data Analysis and Data Quality Assessment</h2>
+<h3>5.3.1 Dataset Overview and Data Integrity Findings</h3><p>Audit CSV được ghi nhận trong README cho thấy 207 giá trị thiếu ở <code>total_bedrooms</code>, không có dòng trùng hoàn toàn; nhóm ISLAND chỉ có 5 mẫu. Missing features được giữ để imputer xử lý. Không loại mẫu chỉ vì giá cao hoặc mô hình dự đoán sai. Nhóm hiếm quá ít quan sát để suy ra hiệu quả ổn định; kết quả toàn tập không bảo đảm độ chính xác đồng đều.</p>
+<h3>5.3.2 EDA Scope and Training Data Boundary</h3><p>Thống kê số dòng, schema và missing trên dữ liệu thô phục vụ audit. Các hình phân phối và tương quan của run được tạo từ train. Phân tích dẫn đến lựa chọn feature hoặc preprocessing phải nằm trong training boundary; validation đánh giá lựa chọn, test dùng đánh giá cuối. Ranh giới này quan trọng hơn thứ tự các chương trong báo cáo.</p>
+<h3>5.3.3 Target Distribution and Price Capping</h3><p>Có 965 quan sát bằng 500.001 USD. Sự tập trung ở cực đại phù hợp với vấn đề target bị chặn trần; CSV không cho phép khôi phục giá trị chưa bị chặn của từng mẫu. Mô hình được chấm theo nhãn đang có, nên sai số thấp chưa chứng minh khả năng ước lượng giá thực của nhóm vượt trần. Không tự thay nhãn bằng giá trị suy đoán.</p><figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/eda_target_distribution.png" alt="Phân phối giá nhà trên train"><figcaption>Phân phối target trên train; chú ý vùng cực đại.</figcaption></figure>
+<h3>5.3.4 Outlier and Skewness Inspection</h3><p>Biến đếm cần được xem xét về độ lệch và giá trị lớn vì khu vực đông dân khác rõ khu vực nhỏ. Outlier theo phân phối không tự động là dữ liệu sai. StandardScaler không biến dữ liệu thành Gaussian và không loại outliers. Pipeline có tùy chọn log1p nhưng run chưa bật; không quy kết quả hiện tại cho log transformation.</p><figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/eda_feature_distributions.png" alt="Phân phối features"><figcaption>Phân phối features trên training partition.</figcaption></figure>
+<h3>5.3.5 Feature–Target Correlation and Multicollinearity</h3><p>Heatmap giúp xem quan hệ tuyến tính và các biến quy mô chứa thông tin trùng nhau. Correlation không chứng minh nhân quả và không mô tả đầy đủ quan hệ phi tuyến. Giữ toàn bộ one-hot cùng intercept có thể tạo phụ thuộc tuyến tính; LR vẫn có thể tính dự đoán nhưng cần thận trọng khi diễn giải từng hệ số. Không dùng heatmap để khẳng định feature quan trọng nhất với mọi mô hình.</p><figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/eda_correlation_heatmap.png" alt="Ma trận tương quan train"><figcaption>Tương quan trên train, không phải bằng chứng nhân quả.</figcaption></figure></section>
+<section id="s54"><h2>5.4 Data Preprocessing and Evaluation Protocol</h2>
+<h3>5.4.1 Data Hygiene Rules and Integrity Controls</h3><p>Loader yêu cầu đúng schema; numeric features đúng kiểu và không chứa infinity; categorical là chuỗi hoặc missing. Target phải hữu hạn và không thiếu, không được điền trung bình để giữ mẫu. Khi fit, cột train hoàn toàn thiếu bị từ chối vì không đủ thông tin tính thống kê đại diện. Kiểm tra cấu trúc chưa bảo đảm mọi giá trị đều hợp lý về nghiệp vụ.</p>
+<h3>5.4.2 Train–Validation–Test Split and Leakage Boundaries</h3><p>Tỷ lệ thực tế là <strong>80% train / 10% validation / 10% test</strong>, tương ứng 16.512 / 2.064 / 2.064 mẫu. Hàm tách 80% train và 20% tạm rồi chia đôi phần tạm. Đây là lựa chọn dự án, khác ví dụ giữ test 20% trong đề cương ban đầu. Seed mặc định là 42.</p><p>Phân tầng dựa trên bins phân vị target: cấu hình 10 bins ở bước đầu và 5 bins ở bước sau; số bins thực tế có thể giảm khi ranh giới trùng nhau. Target được dùng thiết kế chia mẫu, không đưa vào feature đầu vào. Random split chưa ngăn được sự gần nhau về địa lý giữa các tập.</p>
+<h3>5.4.3 Validation Strategy and Its Role in Model Selection</h3><p>Validation theo dõi MLP và chọn checkpoint có MSE thấp nhất. Đây là holdout validation, không phải k-fold CV. Vì tập này tham gia chọn checkpoint nên đánh giá trên nó không còn hoàn toàn độc lập. Test đảm nhiệm đánh giá cuối sau khi cấu hình cố định. Một validation split chưa đủ chứng minh hyperparameters tối ưu.</p>
+<h3>5.4.4 StandardScaler and Leakage-Safe Preprocessing</h3><p>Nhánh numeric gồm median imputation → feature engineering tùy chọn → StandardScaler. Nhánh categorical gồm most-frequent imputation → one-hot encoding. Chỉ train được dùng fit median, mean, độ lệch chuẩn và danh sách categories. Validation, test và inference dùng transform của cùng preprocessor.</p><div class="formula"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msub><mi>z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><mfrac><mrow><msub><mi>x</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>&#x2212;</mo><msub><mi>&#x03BC;</mi><mrow><mi>j</mi><mo>,</mo><mtext>train</mtext></mrow></msub></mrow><msub><mi>&#x03C3;</mi><mrow><mi>j</mi><mo>,</mo><mtext>train</mtext></mrow></msub></mfrac></math></div><p>Không fit scaler trên toàn bộ dữ liệu trước split. Target scaling MLP là bước riêng, cũng chỉ học từ y_train; prediction phải đổi lại USD trước đánh giá. Encoder dùng handle_unknown='ignore' để chấp nhận category mới mà không đổi số chiều.</p>
+<h3>5.4.5 Evaluation Metrics and Target Units</h3><div class="formula"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi mathvariant="normal">MSE</mi><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>&#x2211;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msup><mrow><mo>(</mo><msub><mi>y</mi><mi>i</mi></msub><mo>&#x2212;</mo><msub><mover><mi>y</mi><mo>^</mo></mover><mi>i</mi></msub><mo>)</mo></mrow><mn>2</mn></msup></math><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi mathvariant="normal">RMSE</mi><mo>=</mo><msqrt><mi mathvariant="normal">MSE</mi></msqrt></math><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi mathvariant="normal">MAE</mi><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>&#x2211;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><mrow><mo>|</mo><msub><mi>y</mi><mi>i</mi></msub><mo>&#x2212;</mo><msub><mover><mi>y</mi><mo>^</mo></mover><mi>i</mi></msub><mo>|</mo></mrow></math><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><msup><mi>R</mi><mn>2</mn></msup><mo>=</mo><mn>1</mn><mo>&#x2212;</mo><mfrac><mrow><munderover><mo>&#x2211;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msup><mrow><mo>(</mo><msub><mi>y</mi><mi>i</mi></msub><mo>&#x2212;</mo><msub><mover><mi>y</mi><mo>^</mo></mover><mi>i</mi></msub><mo>)</mo></mrow><mn>2</mn></msup></mrow><mrow><munderover><mo>&#x2211;</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msup><mrow><mo>(</mo><msub><mi>y</mi><mi>i</mi></msub><mo>&#x2212;</mo><mover><mi>y</mi><mo>&#x00AF;</mo></mover><mo>)</mo></mrow><mn>2</mn></msup></mrow></mfrac></math></div><p>Trong c&#225;c c&#244;ng th&#7913;c, n l&#224; s&#7889; m&#7851;u c&#7911;a t&#7853;p &#273;ang &#273;&#225;nh gi&#225;; y<sub>i</sub> l&#224; gi&#225; tr&#7883; th&#7921;c, &#375;<sub>i</sub> l&#224; gi&#225; tr&#7883; d&#7921; &#273;o&#225;n v&#224; &#563; l&#224; trung b&#236;nh target c&#7911;a ch&#237;nh t&#7853;p &#273;&#243;. Ch&#7881; s&#7889; i bi&#7875;u th&#7883; m&#7851;u, j bi&#7875;u th&#7883; feature; &#956; v&#224; &#963; trong c&#244;ng th&#7913;c scaling ch&#7881; &#273;&#432;&#7907;c h&#7885;c t&#7915; train.</p><p>MSE có đơn vị USD²; RMSE và MAE theo USD; R² không có đơn vị. RMSE nhạy với lỗi lớn, MAE bổ sung mức sai lệch tuyệt đối trung bình. R² không phải tỷ lệ dự đoán đúng và có thể âm. Metric chính để đối chiếu là RMSE; chọn checkpoint bằng validation MSE cho cùng thứ tự vì căn bậc hai đơn điệu.</p>
+<h3>5.4.6 Model Selection Criteria and Fair Comparison Protocol</h3><p>Các mô hình dùng chung split, preprocessing và metrics. Theo validation RMSE, RF có kết quả thấp nhất trong các cấu hình đang có. Tuy nhiên CLI chưa tự xuất một mô hình thắng chung: nó lưu cả baseline và MLP, đồng thời demo inference riêng MLP. Cùng dữ liệu không đồng nghĩa ngân sách tuning hoặc độ phức tạp ngang nhau; cần công bố cấu hình để tránh gọi đây là benchmark tối ưu toàn diện.</p></section>
+<section id="s55"><h2>5.5 Feature Engineering and Data Representation</h2>
+<h3>5.5.1 Feature Set Design</h3><p>Run giữ 8 numeric features và one-hot ocean_proximity, tạo 13 chiều đầu vào. Target không nằm trong X. Feature names lấy từ preprocessor đã fit, không hardcode số chiều trong mạng. Category mới được biểu diễn bằng vector toàn 0 của nhóm categorical; cách này tránh lỗi nhưng chưa chứng minh mô hình hiểu đúng nhóm chưa gặp.</p>
+<h3>5.5.2 Numeric Scaling and Its Role in MLP Training</h3><p>Features có thang đo khác nhau; scaling giúp tối ưu bằng gradient ít bị chi phối bởi độ lớn số học của một cột. Scaling không thêm thông tin. Mô hình cây không cần scaling theo cùng lý do, nhưng lab dùng chung biểu diễn để đơn giản hóa đối chiếu. One-hot không đi qua StandardScaler của nhánh numeric.</p>
+<h3>5.5.3 Feature Selection Strategy</h3><p>Run không thực hiện feature selection, không bật log hay ratios. Giữ features giúp so sánh cùng biểu diễn và hạn chế số quyết định thực nghiệm. Mã có thể tạo rooms_per_household, bedrooms_ratio và people_per_household hoặc log1p các biến đếm. Đây là khả năng của module, chưa phải cải thiện đã chứng minh trong run. Muốn sử dụng phải đánh giá bằng validation trước khi cố định cấu hình.</p></section>
+<section id="s56"><h2>5.6 Model Development and Selection</h2>
+<h3>5.6.1 Naive and Linear Regression Baselines</h3><p>LR được fit trước MLP, có intercept và tạo mốc tuyến tính: <math xmlns="http://www.w3.org/1998/Math/MathML"><mover><mi>y</mi><mo>^</mo></mover><mo>=</mo><mi>b</mi><mo>+</mo><munderover><mo>&#x2211;</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mi>p</mi></munderover><msub><mi>w</mi><mi>j</mi></msub><msub><mi>x</mi><mi>j</mi></msub></math>. Cấu trúc đơn giản nhưng khó mô tả tương tác phi tuyến nếu không thêm biểu diễn. <strong>Naive baseline dự đoán trung bình chưa được triển khai trong run này.</strong> Báo cáo không gán kết quả giả cho mô hình chưa chạy. Bổ sung DummyRegressor là bước cải tiến để có mốc tối thiểu rõ hơn.</p>
+<h3>5.6.2 Classical Comparison Models: Decision Tree and Random Forest</h3><p>DT dùng max_depth=5, dự đoán theo các vùng chia của feature space. Giới hạn depth giảm độ phức tạp nhưng có thể hạn chế biểu diễn. RF dùng 100 cây, random_state=42, max_features=1.0 và không giới hạn max_depth trong cấu hình hiện tại. Trung bình nhiều cây có thể giảm phương sai, nhưng chênh lệch RF–DT còn chịu ảnh hưởng của độ sâu khác nhau, không chỉ việc kết hợp cây.</p>
+<h3>5.6.3 Core Idea of the MLP</h3><p>Mỗi hidden layer tính <math xmlns="http://www.w3.org/1998/Math/MathML"><msup><mi>h</mi><mrow><mo>(</mo><mi>l</mi><mo>)</mo></mrow></msup><mo>=</mo><mi mathvariant="normal">ReLU</mi><mo>(</mo><msup><mi>W</mi><mrow><mo>(</mo><mi>l</mi><mo>)</mo></mrow></msup><msup><mi>h</mi><mrow><mo>(</mo><mi>l</mi><mo>&#x2212;</mo><mn>1</mn><mo>)</mo></mrow></msup><mo>+</mo><msup><mi>b</mi><mrow><mo>(</mo><mi>l</mi><mo>)</mo></mrow></msup><mo>)</mo></math>, rồi lớp sau kết hợp biểu diễn vừa học. ReLU tạo phi tuyến; bỏ toàn bộ activation thì nhiều lớp tuyến tính vẫn tương đương một ánh xạ tuyến tính. Forward pass tạo dự đoán; backpropagation tính gradient loss theo trọng số; optimizer cập nhật trọng số. Tối ưu không bảo đảm tìm nghiệm toàn cục cho bài toán không lồi này.</p>
+<h3>5.6.4 MLP Architecture Design</h3><p>Kiến trúc là <strong>13 → 32 ReLU → 16 ReLU → 1 linear</strong>, gồm 993 tham số trainable với input 13 chiều. Hai hidden layers giữ mô hình nhỏ trong phạm vi lab nhưng vẫn biểu diễn phi tuyến. Output linear phù hợp hồi quy liên tục; không dùng sigmoid vì giá nhà không nằm trong [0,1]. Đầu ra không bị ràng buộc dương hoặc chặn trên, nên ứng dụng cần kiểm tra giá trị bất hợp lý.</p>
+<h3>5.6.5 Training Configuration and Hyperparameter Tuning</h3><p>MLP dùng Adam, learning rate 0,001, batch size 32 và 100 epochs. Mục tiêu tối ưu là MSE trên target đã chuẩn hóa bằng mean và độ lệch chuẩn train. Prediction đổi về USD trước tính metrics. DataLoader shuffle train bằng generator gắn seed.</p><p>Mạng chạy đủ 100 epochs rồi khôi phục checkpoint validation tốt nhất; <strong>không phải early stopping</strong>. Không có grid search, dropout hoặc weight decay được cấu hình riêng. CLI cho phép đổi tham số không chứng minh đã thực hiện tuning có hệ thống.</p>
+<h3>5.6.6 Final Model Selection Based on Validation</h3><p>Validation RMSE: RF 50.474,83 USD; MLP 55.288,39 USD; DT 71.822,64 USD; LR 74.051,58 USD. Nếu ưu tiên metric này, RF là ứng viên tốt nhất trong các cấu hình đã xét. MLP vẫn là trọng tâm học tập và được lưu demo inference. Checkpoint MLP được chọn ở epoch 100. Không dùng thứ hạng test để sửa kiến trúc rồi tiếp tục gọi cùng test là độc lập.</p></section>
+<section id="s57"><h2>5.7 Model Evaluation and Result Analysis</h2>
+<h3>5.7.1 Evaluation Consistency Audit</h3><p>Metrics lấy từ CSV cùng run, prediction và target cùng USD. MSE phải tương ứng RMSE² trong sai số làm tròn. Training history ghi MSE và MAE theo đơn vị gốc cuối epoch, khác loss target chuẩn hóa dùng backpropagation. Không so trực tiếp loss chuẩn hóa với MSE USD². Đường cong dùng snapshot cuối epoch, không phải trung bình mini-batch loss khi trọng số đang cập nhật.</p>
+<h3>5.7.2 Quantitative Results: Train, Validation, and Test</h3><p>Bảng trình bày validation/test của cùng các mô hình. Artifacts chưa có bảng train đầy đủ cho bốn mô hình nên không tự điền train R² hoặc MAE của baseline. Với MLP, bảng train được lấy từ epoch được chọn trong history, không mặc nhiên lấy dòng cuối khi checkpoint nằm ở epoch khác.</p>
+<div class="table-wrap"><table><thead><tr><th>Model</th><th>Val RMSE (USD)</th><th>Val MAE (USD)</th><th>Val R<sup>2</sup></th><th>Test MSE (USD<sup>2</sup>)</th><th>Test RMSE (USD)</th><th>Test MAE (USD)</th><th>Test R<sup>2</sup></th></tr></thead><tbody><tr><td>Random Forest</td><td>50,474.83</td><td>32,535.17</td><td>0.8074</td><td>2,297,281,701.04</td><td>47,929.97</td><td>31,298.94</td><td>0.8255</td></tr><tr><td>MLP PyTorch</td><td>55,288.39</td><td>36,551.04</td><td>0.7689</td><td>2,642,317,401.20</td><td>51,403.48</td><td>35,366.58</td><td>0.7993</td></tr><tr><td>Linear Regression</td><td>74,051.58</td><td>51,760.14</td><td>0.5855</td><td>4,446,723,192.43</td><td>66,683.76</td><td>49,481.55</td><td>0.6622</td></tr><tr><td>Decision Tree</td><td>71,822.64</td><td>50,444.72</td><td>0.6101</td><td>4,908,901,183.75</td><td>70,063.55</td><td>49,788.76</td><td>0.6271</td></tr></tbody></table></div><div class="table-wrap"><table><thead><tr><th>MLP epoch</th><th>Train MSE (USD<sup>2</sup>)</th><th>Train RMSE (USD)</th><th>Train MAE (USD)</th></tr></thead><tbody><tr><td>100</td><td>2,459,671,608.07</td><td>49,595.08</td><td>33,491.61</td></tr></tbody></table></div>
+<h3>5.7.3 Model Comparison: MLP vs. LR vs. DT vs. RF</h3><p>Test RMSE: RF 47.929,97 USD; MLP 51.403,48 USD; LR 66.683,76 USD; DT 70.063,55 USD. MLP giảm RMSE khoảng 22,92% so với LR nhưng cao hơn RF khoảng 7,25%. Các tỷ lệ dùng LR hoặc RF làm mẫu số tương ứng, không phải chênh lệch điểm R².</p><p>Kết quả cho thấy lợi ích của MLP so với mốc tuyến tính trong lần chạy này và cấu hình RF hiện tại tốt hơn. Chưa thể kết luận RF luôn hơn MLP hoặc tăng độ sâu MLP chắc chắn đảo thứ hạng. Cây depth 5 kém LR cũng không chứng minh mọi DT đều kém mô hình tuyến tính.</p><figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/model_comparison_bar.png" alt="So sánh các mô hình"><figcaption>So sánh trên test của run tham chiếu.</figcaption></figure>
+<h3>5.7.4 Prediction Error and Residual Analysis</h3><p>MAE MLP khoảng 35.367 USD là trung bình sai số tuyệt đối, không bảo đảm từng dự đoán nằm trong khoảng ±35.367 USD. RMSE lớn hơn MAE cho thấy phép bình phương nhấn mạnh lỗi lớn. Khi đọc residual cần đối chiếu quy ước dấu của hàm vẽ để không đảo ý nghĩa dự đoán cao và thấp.</p><p>Ba mẫu dưới minh họa load/predict, không đại diện toàn phân phối lỗi. Muốn kết luận mô hình yếu ở phân khúc nào phải thống kê lỗi theo nhóm cùng số mẫu; không chỉ chọn vài ví dụ thuận lợi.</p>
+<div class="table-wrap"><table><thead><tr><th>Actual_USD</th><th>Predicted_USD</th><th>Absolute_Error_USD</th></tr></thead><tbody><tr><td>145,600.00</td><td>213,043.30</td><td>67,443.30</td></tr><tr><td>100,000.00</td><td>105,835.08</td><td>5,835.08</td></tr><tr><td>137,600.00</td><td>129,420.39</td><td>8,179.61</td></tr></tbody></table></div>
+<figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/mlp_pytorch_actual_vs_predicted.png" alt="Giá thực và dự đoán MLP"><figcaption>Giá thực và dự đoán MLP trên test.</figcaption></figure><figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/mlp_pytorch_residuals.png" alt="Phân phối residual MLP"><figcaption>Residual MLP trên test; đọc cùng scatter plot và metrics.</figcaption></figure>
+<h3>5.7.5 Feature Importance and Model Interpretation</h3><p>Run CLI chưa lưu permutation importance, SHAP hay bảng hệ số được kiểm toán; báo cáo không xếp hạng feature importance. Correlation train là bằng chứng mô tả. Khi bổ sung diễn giải phải phân biệt tầm quan trọng dự đoán với tác động nhân quả. Biến tương quan có thể chia sẻ thông tin và làm thứ hạng importance thay đổi; không suy ra tăng một biến sẽ trực tiếp gây tăng giá theo hệ số hồi quy.</p>
+<h3>5.7.6 Training Curves and Overfitting Analysis</h3><p>Đường train/validation giúp quan sát tiến trình học và khoảng cách tổng quát hóa. Checkpoint tốt nhất ở epoch cuối chỉ cho thấy epoch 100 có validation MSE thấp nhất trong những epochs đã chạy, chưa chứng minh hội tụ hoặc train lâu hơn sẽ tốt hơn.</p><p>Test RMSE thấp hơn validation RMSE không tự động là leakage vì đây là hai mẫu khác nhau. Cần kiểm tra pipeline và đường cong thay vì kết luận từ một cặp số. Nếu train tiếp hay đổi cấu hình, việc lựa chọn vẫn phải dựa trên validation.</p><figure><img loading="lazy" src="../../runs/20261116T113754704337Z_36457503/results/figures/loss_curve.png" alt="Đường cong MSE và MAE"><figcaption>MSE và MAE theo epoch, quy về đơn vị target gốc.</figcaption></figure>
+<h3>5.7.7 Stability Assessment and Evidence Limitations</h3><p>Chỉ có một seed và một split. Chưa có mean ± standard deviation qua nhiều lần chạy, confidence interval hoặc spatial holdout. Độ ổn định thứ hạng và độ nhạy với khởi tạo chưa được chứng minh. Chênh lệch RF–MLP là quan sát của thí nghiệm, chưa phải kiểm định vượt trội thống kê. Đặt seed hỗ trợ lặp lại phép chạy, không thay cho đánh giá stability.</p></section>
+<section id="s58"><h2>5.8 Model Persistence, Inference, and Reproducibility</h2>
+<h3>5.8.1 Saved Models and Preprocessing Artifacts</h3><p>Run lưu mlp_house_price_model.pt, baseline_models.joblib, preprocessor.joblib, raw splits, history, bảng validation/test, sample predictions và figures. Manifest ghi cấu hình, versions, feature names và hashes dữ liệu, code, artifacts. Chỉ trọng số mạng chưa đủ: thiếu preprocessor hay target scaling sẽ làm inference không tương ứng training.</p>
+<h3>5.8.2 Input Schema and Inference Procedure</h3><p>Inference nhận DataFrame đúng 9 features thô với tên cột và kiểu dữ liệu hợp lệ. Nạp preprocessor cùng run → transform → predict_mlp → vector USD. Hàm dự đoán đặt eval mode và tắt gradient; target được inverse-scale bằng thống kê lưu trong model. Không fit hay fit_transform dữ liệu mới. Hiện đây là hàm Python và demo CLI, chưa phải web service.</p>
+<h3>5.8.3 Artifact Reload and Prediction Verification</h3><p>CLI nạp lại model/preprocessor, dự đoán tối đa ba mẫu test rồi so với trước lưu bằng assert_allclose, rtol=10⁻⁵, atol=10⁻³ USD. Đây là kiểm tra nhất quán persistence trên các mẫu minh họa, không thay thế đánh giá toàn test hoặc test vận hành. Khi biên soạn đã xác minh hash manifest và mọi artifact theo latest_run; không huấn luyện lại để tạo số liệu.</p>
+<h3>5.8.4 Reproducibility Settings and Execution Instructions</h3><p>Seed 42 đặt cho Python, NumPy và PyTorch; bật deterministic algorithms. DataLoader dùng generator gắn seed và num_workers=0. Các thiết lập hỗ trợ tái lập trong môi trường tương ứng; khác phần cứng hay versions vẫn có thể tạo khác biệt. Lệnh sau tạo run mới, không ghi đè run được trích trong báo cáo.</p><pre><code>python main.py --epochs 100 --batch-size 32 --lr 0.001 --random-state 42</code></pre>
+<h3>5.8.5 Practical Deployment Considerations</h3><p>Cần kiểm tra đầu vào hợp lý, địa lý và thời điểm có phù hợp dữ liệu học, cùng cơ chế xem xét dự đoán bất thường. Cần theo dõi lỗi theo nhóm và có nhãn mới để nhận diện suy giảm chất lượng. Chỉ nạp joblib từ nguồn tin cậy. Lab chưa cung cấp API, monitoring, bảo mật vận hành hay quy trình cập nhật model; không tính các phần này là đã hoàn thành.</p></section>
+<section id="s59"><h2>5.9 Limitations and Future Work</h2>
+<h3>5.9.1 Data and Evaluation Limitations</h3><p>Target là trung vị khu vực, có trần giá và không phản ánh từng căn nhà. Nhóm hiếm ít dữ liệu. Random split có thể thuận lợi hơn đánh giá trên vùng địa lý mới. Provenance CSV chưa đầy đủ. Một split chưa lượng hóa bất định và chưa đánh giá khả năng áp dụng cho thị trường hiện tại.</p>
+<h3>5.9.2 Model and Generalization Limitations</h3><p>MLP cố định hai hidden layers, chưa search hyperparameters có hệ thống. DT giới hạn depth còn RF không giới hạn tương ứng. Chưa có naive baseline, bảng train đầy đủ hay feature importance được lưu. MSE đối xứng chưa mô tả chi phí định giá sai theo từng phía hoặc phân khúc. Vì vậy không xem đây là benchmark thuật toán tổng quát.</p>
+<h3>5.9.3 Short-Term Engineering Improvements</h3><p>Ưu tiên bổ sung DummyRegressor dự đoán mean y_train; lưu train/validation/test metrics cùng checkpoint; bổ sung error summary theo mức giá, vị trí cùng số mẫu; hoàn thiện hồ sơ dataset. Sau đó đối chiếu log/ratios hoặc một số cấu hình nhỏ bằng validation. Đây là kế hoạch cải tiến, chưa phải kết quả đã thực hiện.</p>
+<h3>5.9.4 Long-Term Research Directions</h3><p>Thử nhiều seeds, spatial validation hoặc nested evaluation cho tuning; đối chiếu boosting; bổ sung dự báo khoảng và đánh giá theo nhóm. Muốn định giá từng căn cần dữ liệu cấp căn và thời điểm giao dịch. Tăng độ phức tạp mô hình không giải quyết sự lệch giữa đơn vị quan sát dataset và mục tiêu ứng dụng.</p></section>
+<section id="s510"><h2>5.10 Conclusion</h2>
+<h3>5.10.1 Summary of Key Findings</h3><p>Lab triển khai pipeline hồi quy với preprocessing fit trên train, validation chọn checkpoint và test đánh giá cuối. MLP đạt test RMSE 51.403,48 USD, MAE 35.366,58 USD, R² 0,7993. MLP có sai số thấp hơn LR trong cùng run; RF tốt nhất trong bốn cấu hình xét trên cả validation và test.</p>
+<h3>5.10.2 Final Model Assessment</h3><p>MLP đáp ứng mục tiêu học xây dựng và theo dõi mạng cho regression. Kết quả không ủng hộ chọn MLP chỉ vì là mô hình trung tâm của lab. Nếu ưu tiên validation RMSE hiện có, RF là ứng viên tốt hơn; nếu minh họa MLP, dùng checkpoint đã kiểm tra cùng preprocessor. Kết luận giới hạn ở dataset, split, seed và cấu hình đã báo cáo, chưa xác nhận khả năng định giá thực tế.</p></section>
+
+
+<footer>Báo cáo Lab 4 • Các giá trị theo USD của dataset; không phải báo giá thị trường hiện tại.</footer></main></body></html>
