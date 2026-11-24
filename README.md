@@ -18,7 +18,9 @@ Bài lab thực hành **hồi quy có giám sát** để dự đoán giá trị 
 
 ### 1.2. Dữ liệu và schema
 
-File cục bộ [`data/raw/housing.csv`](data/raw/housing.csv) gồm **20.640 dòng**, 9 features và một target.
+Tập dữ liệu xuất phát từ cuộc **Tổng điều tra Dân số và Nhà ở Hoa Kỳ năm 1990 (1990 U.S. Census)** do Cục Thống kê Dân số Hoa Kỳ (U.S. Census Bureau) thực hiện, được hai nhà nghiên cứu **R. Kelley Pace** và **Ronald Barry** thu thập và công bố trong bài báo khoa học *"Sparse Spatial Autoregressions"* (Statistics & Probability Letters, 1997). Tác giả Aurélien Géron sau đó bổ sung đặc trưng phân loại `ocean_proximity` dựa trên khoảng cách bờ biển trong giáo trình máy học kinh điển của O'Reilly.
+
+File cục bộ [`data/raw/housing.csv`](data/raw/housing.csv) gồm đúng **20.640 dòng** (tương ứng với 20.640 Census Block Groups tại California năm 1990), 9 features và một target.
 
 | Nhóm | Các cột | Xử lý |
 | --- | --- | --- |

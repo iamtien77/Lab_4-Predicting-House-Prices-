@@ -1,4 +1,4 @@
-﻿# 05 — Xây dựng các baseline
+# 05 — Xây dựng các baseline
 
 Baseline tạo mốc để biết MLP có mang lại lợi ích trên cùng bài toán hay không. Project huấn luyện Linear Regression, Decision Tree và Random Forest theo thứ tự này trước MLP. Random Forest là đối chứng phi tuyến mạnh hơn, không hàm ý mọi baseline đều đơn giản hoặc dễ giải thích như nhau. Implementation hiện tại không có DummyRegressor.
 

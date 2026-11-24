@@ -1,4 +1,4 @@
-﻿# 04 — Tiền xử lý và feature engineering
+# 04 — Tiền xử lý và feature engineering
 
 Giai đoạn này chuyển raw features thành ma trận số dùng chung cho baseline và MLP. Mục tiêu là xử lý missing values, biểu diễn categorical features và điều chỉnh thang đo numeric features; mọi statistics chỉ được học từ train.
 

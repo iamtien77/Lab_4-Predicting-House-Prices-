@@ -1,4 +1,4 @@
-﻿# 06 — Huấn luyện MLP
+# 06 — Huấn luyện MLP
 
 Giai đoạn này học quan hệ phi tuyến bằng PyTorch MLP và so sánh với các baseline đã có. Mục tiêu là tạo checkpoint được chọn bằng validation, prediction theo USD và history có thể diễn giải; không mặc định neural network phải thắng Random Forest.
 

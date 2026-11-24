@@ -1,14 +1,14 @@
-# 02 ? Ki?m tra v? ph?n t?ch ch?t l??ng d? li?u
+# 02 — Kiểm tra và phân tích chất lượng dữ liệu
 
-## 1. M?c ti?u v? input/output
+## 1. Mục tiêu và input/output
 
-Input l? [CSV th?](../../data/raw/housing.csv) ?? nh?n di?n ? ch??ng 00. Output g?m DataFrame h?p l?, t?n target v? b?o c?o audit: shape, ki?u d? li?u, missing, duplicates, ph?n b? nh?n ph?n lo?i v? gi?i h?n target. Giai ?o?n n?y kh?ng t? s?a d? li?u ho?c hu?n luy?n model.
+Input là [CSV thô](../../data/raw/housing.csv) đã nhận diện ở chương 00. Output gồm DataFrame hợp lệ, tên target và báo cáo audit: shape, kiểu dữ liệu, missing, duplicates, phân bố nhãn phân loại và giới hạn target. Giai đoạn này không tự sửa dữ liệu hoặc huấn luyện model.
 
-Hai c?u h?i kh?c nhau c?n ???c tr? l?i: **file c? ??p ?ng contract ph?n m?m kh?ng** v? **d? li?u c? nh?ng h?n ch? g? khi di?n gi?i k?t qu?**. Loader tr? th?nh c?ng ch? gi?i ??p c?u h?i th? nh?t trong ph?m vi quy t?c ?? c?i ??t; kh?ng ch?ng minh nh?n ??ng v?i th?c t? hay m?u ??i di?n d?n s?.
+Hai câu hỏi khác nhau cần được trả lời: **file có đáp ứng contract phần mềm không** và **dữ liệu có những hạn chế gì khi diễn giải kết quả**. Loader trở thành công cụ giải đáp câu hỏi thứ nhất trong phạm vi quy tắc đã cài đặt; không chứng minh nhãn đúng với thực tế hay mẫu đại diện dân số.
 
-## 2. Th?c hi?n audit c? th? t?i l?p
+## 2. Thực hiện audit cụ thể tái lập
 
-T? th? m?c g?c, d?ng m?i tr??ng s?n c? v? ch?y ?o?n sau trong Python:
+Từ thư mục gốc, dùng môi trường sẵn có và chạy đoạn sau trong Python:
 
 ```python
 import hashlib
@@ -21,114 +21,114 @@ df, target = load_housing_data(path)
 info = fetch_dataset_info(df, target)
 print(info)
 print("sha256:", hashlib.sha256(path.read_bytes()).hexdigest())
-print("target t?i 500001:", int(df[target].eq(500001).sum()))
+print("target tại 500001:", int(df[target].eq(500001).sum()))
 print("numeric infinity:", int(np.isinf(
     df.select_dtypes(include="number").to_numpy()
 ).sum()))
 ```
 
-`fetch_dataset_info()` t?nh th?ng k? m? kh?ng thay ??i ho?c lo?i d?ng. H?m ki?m tra target nh?ng kh?ng thay th? to?n b? feature validation c?a loader; g?i loader tr??c nh? v? d?. `target_max_count` c?a helper ??m s? d?ng b?ng **max ?ang c?**, kh?ng m?c ??nh m?i CSV ??u c? tr?n 500.001; n?n ??i chi?u c? max v? ph?p ??m b?ng gi? tr? c? th?.
+`fetch_dataset_info()` tính thống kê mà không thay đổi hoặc loại dòng. Hàm kiểm tra target nhưng không thay thế toàn bộ feature validation của loader; gọi loader trước như ví dụ. `target_max_count` của helper đếm số dòng bằng **max đang có**, không mặc định mọi CSV đều có trần 500.001; nên đối chiếu cả max và phép đếm bằng giá trị cụ thể.
 
-## 3. Contract schema v? quy t?c t? ch?i
+## 3. Contract schema và quy tắc từ chối
 
-Ngu?n tr?c ti?p l? [src/data/loader.py](../../src/data/loader.py):
+Nguồn trực tiếp là [src/data/loader.py](../../src/data/loader.py):
 
-| Ki?m tra | H?nh vi th?c t? | ? ngh?a |
+| Kiểm tra | Hành vi thực tế | Ý nghĩa |
 | --- | --- | --- |
-| ???ng d?n | Ph?i l? file c?c b?; kh?ng c? th? `FileNotFoundError` | Kh?ng t? t?i d? li?u thay th? |
-| CSV | B?t `EmptyDataError`/`ParserError` th?nh `ValueError` | Kh?ng b? qua l?i parse |
-| Target | Ph?i c? c?t `median_house_value`, Series s? kh?ng r?ng, kh?ng boolean, m?i gi? tr? h?u h?n | Kh?ng ch?p nh?n missing/Inf/NaN v? kh?ng ?i?n target |
-| Features | DataFrame kh?ng r?ng, t?n c?t duy nh?t, t?p c?t ??ng 9 c?t c?u h?nh | C?t thi?u ho?c th?a ??u b? t? ch?i |
-| Numeric features | Dtype numeric, kh?ng boolean, kh?ng infinity | NaN features ???c ph?p ?? imputer x? l? sau |
-| Categorical features | M?i gi? tr? kh?ng missing ph?i l? chu?i | Kh?ng ?p m? s? th?nh category ng?m |
-| C?t train ho?n to?n missing | B? t? ch?i khi validation ch?y v?i `require_complete_columns=True` trong fit preprocessing | Loader m?c ??nh ch?a ?p d?ng ?i?u ki?n n?y |
+| Đường dẫn | Phải là file cục bộ; không có thì `FileNotFoundError` | Không tự tải dữ liệu thay thế |
+| CSV | Bắt `EmptyDataError`/`ParserError` thành `ValueError` | Không bỏ qua lỗi parse |
+| Target | Phải có cột `median_house_value`, Series số không rỗng, không boolean, mọi giá trị hữu hạn | Không chấp nhận missing/Inf/NaN và không điền target |
+| Features | DataFrame không rỗng, tên cột duy nhất, tập cột đúng 9 cột cấu hình | Cột thiếu hoặc thừa đều bị từ chối |
+| Numeric features | Dtype numeric, không boolean, không infinity | NaN features được phép để imputer xử lý sau |
+| Categorical features | Mọi giá trị không missing phải là chuỗi | Không ép mã số thành category ngầm |
+| Cột train hoàn toàn missing | Bị từ chối khi validation chạy với `require_complete_columns=True` trong fit preprocessing | Loader mặc định chưa áp dụng điều kiện này |
 
-Numeric text ??c th?nh chu?i, v? d? m?t c?t c? th?m ch?, c? th? b? t? ch?i thay v? ???c t? ?p ki?u. Kh?ng th?m c?t index CSV v?o input model: schema strict s? coi ?? l? c?t th?a. Ki?m tra t?n c?t ? ??y ?p d?ng DataFrame sau `read_csv`; kh?ng coi n? l? m?t c?ng c? ki?m ??nh m?i ??c ?i?m c?a header CSV th?.
+Numeric text đọc thành chuỗi, ví dụ một cột có thêm chữ, có thể bị từ chối thay vì được tự ép kiểu. Không thêm cột index CSV vào input model: schema strict sẽ coi đó là cột thừa. Kiểm tra tên cột ở đây áp dụng DataFrame sau `read_csv`; không coi nó là một công cụ kiểm định mọi đặc điểm của header CSV thô.
 
-Loader kh?ng c? b? quy t?c ??y ?? cho ??a l?, t?nh h?p l? kinh t? ho?c mi?n gi? tr?. M?t s? ?i?u ki?n m?u s?/log thu?c feature engineering, ???c ki?m tra khi b?t bi?n ??i t??ng ?ng; xem [ch??ng 04](04_preprocessing_and_features.md). V? th? ???c ???c? kh?ng ??ng ngh?a ?m?i gi? tr? ??u h?p l? v? domain?.
+Loader không có bộ quy tắc đầy đủ cho địa lý, tính hợp lý kinh tế hoặc miền giá trị. Một số điều kiện mẫu số/log thuộc feature engineering, được kiểm tra khi bật biến đổi tương ứng; xem [chương 04](04_preprocessing_and_features.md). Vì thế “đọc được” không đồng nghĩa “mọi giá trị đều hợp lý về domain”.
 
-## 4. K?t qu? audit CSV ng?y 24/11/2026
+## 4. Kết quả audit CSV ngày 24/11/2026
 
-Ph?m vi b?ng n?y l? **to?n b? 20.640 d?ng tr??c split**, hash `b214a65099c1dcc2ea7797935aff103fa0445220a366fb74beacb59486e548ff`.
+Phạm vi bảng này là **toàn bộ 20.640 dòng trước split**, hash `b214a65099c1dcc2ea7797935aff103fa0445220a366fb74beacb59486e548ff`.
 
-| H?ng m?c | K?t qu? | Di?n gi?i |
+| Hạng mục | Kết quả | Diễn giải |
 | --- | ---: | --- |
-| D?ng ? c?t | 20.640 ? 10 | 9 features v? 1 target |
-| Missing `total_bedrooms` | 207 / 20.640 ? 1,003% | Gi? d?ng, x? l? b?ng imputer fit train |
-| Missing c?c c?t kh?c | 0 | Kh?ng suy ra m?i b?n CSV t??ng lai c?ng nh? v?y |
-| D?ng tr?ng ho?n to?n | 0 | Kh?ng ch?ng minh kh?ng c? quan s?t g?n gi?ng ho?c ph? thu?c kh?ng gian |
-| Numeric infinity | 0 | Ki?m ??m c?c c?t s? |
-| Target missing/kh?ng h?u h?n | 0 | Loader ?? x?c th?c th?nh c?ng |
-| Target nh? nh?t | 14.999 USD | Gi? tr? quan s?t trong file |
-| Target l?n nh?t | 500.001 USD | 965 d?ng c?ng ??t m?c n?y |
-| Target b?ng 500.001 | 965 / 20.640 ? 4,675% | C?n ch? ? khi ??nh gi? nh?m nh?n t?i tr?n |
+| Dòng × cột | 20.640 × 10 | 9 features và 1 target |
+| Missing `total_bedrooms` | 207 / 20.640 ≈ 1,003% | Giữ dòng, xử lý bằng imputer fit train |
+| Missing các cột khác | 0 | Không suy ra mọi bản CSV tương lai cũng như vậy |
+| Dòng trùng hoàn toàn | 0 | Không chứng minh không có quan sát gần giống hoặc phụ thuộc không gian |
+| Numeric infinity | 0 | Kiểm đếm các cột số |
+| Target missing/không hữu hạn | 0 | Loader đã xác thực thành công |
+| Target nhỏ nhất | 14.999 USD | Giá trị quan sát trong file |
+| Target lớn nhất | 500.001 USD | 965 dòng cùng đạt mức này |
+| Target bằng 500.001 | 965 / 20.640 ≈ 4,675% | Cần chú ý khi đánh giá nhóm nhãn tại trần |
 
-C?c th?ng k? target t? pandas `describe()`:
+Các thống kê target từ pandas `describe()`:
 
 | Count | Mean | Sample std | Q1 | Median | Q3 |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 20.640 | 206.855,82 | 115.395,62 | 119.600 | 179.700 | 264.725 |
 
-C?c gi? tr? ti?n ??u theo USD. Sample std c?a b?ng d?ng m?u s? N?1, kh?ng ph?i population std d?ng cho target scaling. Kh?ng ??a mean/std c?a to?n CSV n?y v?o qu? tr?nh fit MLP.
+Các giá trị tiền đều theo USD. Sample std của bảng dùng mẫu số N-1, không phải population std dùng cho target scaling. Không đưa mean/std của toàn CSV này vào quá trình fit MLP.
 
-### Missing features kh?c missing target
+### Missing features khác missing target
 
-Thi?u feature v?n cho ph?p s? d?ng target th?t c?a d?ng khi training; median imputation l? m?t l?a ch?n ?? gi? m?u. Nh?ng ?i?n target b?ng median r?i hu?n luy?n s? t?o nh?n gi? v? thay ??i b?i to?n, n?n loader t? ch?i target thi?u. T? l? missing kho?ng 1% kh?ng ch?ng minh missing l? ng?u nhi?n; audit hi?n t?i ch?a ph?n t?ch c? ch? missing.
+Thiếu feature vẫn cho phép sử dụng target thật của dòng khi training; median imputation là một lựa chọn để giữ mẫu. Nhưng điền target bằng median rồi huấn luyện sẽ tạo nhãn giả và thay đổi bài toán, nên loader từ chối target thiếu. Tỷ lệ missing khoảng 1% không chứng minh missing là ngẫu nhiên; audit hiện tại chưa phân tích cơ chế missing.
 
-Kh?ng g?i `dropna()` tr?n to?n b?ng cho ti?n ho?c d?ng median c?a to?n CSV. Sau split, imputer ch? h?c median t? train. V?i run tham chi?u, ch??ng 03 ki?m tra 167 missing `total_bedrooms` trong train; ?? l? ph?m vi kh?c v?i 207 tr?n to?n CSV.
+Không gọi `dropna()` trên toàn bảng cho tiện hoặc dùng median của toàn CSV. Sau split, imputer chỉ học median từ train. Với run tham chiếu, chương 03 kiểm tra 167 missing `total_bedrooms` trong train; đó là phạm vi khác với 207 trên toàn CSV.
 
-### Nh?n t?i tr?n v? nh?m hi?m
+### Nhãn tại trần và nhóm hiếm
 
-Theo README, target c? hi?n t??ng capping t?i 500.001 USD. Audit x?c nh?n **965 d?ng b?ng ??ng m?c max n?y**, nh?ng ph?p ??m kh?ng t? ch?ng minh c? ch? thu th?p ho?c gi? tr? th?t ph?a tr?n tr?n. Model ???c ??nh gi? so v?i nh?n c? s?n; prediction g?n 500.001 kh?ng ch?ng minh d? ?o?n ??ng gi? ch?a b? ch?n.
+Theo README, target có hiện tượng capping tại 500.001 USD. Audit xác nhận **965 dòng bằng đúng mức max này**, nhưng phép đếm không tự chứng minh cơ chế thu thập hoặc giá trị thật phía trên trần. Model được đánh giá so với nhãn có sẵn; prediction gần 500.001 không chứng minh dự đoán đúng giá chưa bị chặn.
 
-| `ocean_proximity` | S? d?ng | T? l? tr?n 20.640 |
-| --- | ---: | ---: |
+| `ocean_proximity` | Số dòng | Tỷ lệ trên 20.640 |
+| --- | ---: | --- |
 | `<1H OCEAN` | 9.136 | 44,264% |
 | `INLAND` | 6.551 | 31,739% |
 | `NEAR OCEAN` | 2.658 | 12,878% |
 | `NEAR BAY` | 2.290 | 11,095% |
 | `ISLAND` | 5 | 0,024% |
 
-`ISLAND` r?t ?t m?u n?n m?t v?i d? ?o?n c? th? l?m metric c?a nh?m thay ??i m?nh. Random split ph?n t?ng target kh?ng b?o ??m m?i nh?n category xu?t hi?n v?i s? l??ng ?? trong c? ba t?p. One-hot c?n x? l? category ch?a th?y, nh?ng kh? n?ng ch?y kh?ng l?i kh?c v?i kh? n?ng d? ?o?n t?t cho nh?m ??. Kh?ng g?p/x?a nh?m ch? v? ?t m?u m? kh?ng c? quy?t ??nh v? ??nh gi? ri?ng.
+`ISLAND` rất ít mẫu nên một vài dự đoán có thể làm metric của nhóm thay đổi mạnh. Random split phân tầng target không bảo đảm mọi nhãn category xuất hiện với số lượng đủ trong cả ba tập. One-hot cần xử lý category chưa thấy, nhưng khả năng chạy không lỗi khác với khả năng dự đoán tốt cho nhóm đó. Không gộp/xóa nhóm chỉ vì ít mẫu mà không có quyết định và đánh giá riêng.
 
-## 5. Ph?n bi?t audit v?i EDA v? fit
+## 5. Phân biệt audit với EDA và fit
 
-| Ho?t ??ng | Ph?m vi | C? h?c tham s? ?? bi?n ??i kh?ng? |
+| Hoạt động | Phạm vi | Có học tham số để biến đổi không? |
 | --- | --- | --- |
-| Audit schema, missing, duplicates, ??m nh?m | To?n CSV ?? m? t? v? ki?m tra h?p l? | Kh?ng |
-| EDA chi ti?t ?? hi?u ph?n b?/quan h? v? ?? xu?t features | Train sau split | Kh?ng fit model, nh?ng c? th? t?c ??ng l?a ch?n thi?t k? |
-| Imputation, scaling, h?c danh s?ch one-hot | Ch? train | C? |
-| ?p d?ng cho validation/test/inference | D? li?u t??ng ?ng | Ch? transform, kh?ng fit l?i |
+| Audit schema, missing, duplicates, đếm nhóm | Toàn CSV để mô tả và kiểm tra hợp lệ | Không |
+| EDA chi tiết để hiểu phân bố/quan hệ và đề xuất features | Train sau split | Không fit model, nhưng có thể tác động lựa chọn thiết kế |
+| Imputation, scaling, học danh sách one-hot | Chỉ train | Có |
+| Áp dụng cho validation/test/inference | Dữ liệu tương ứng | Chỉ transform, không fit lại |
 
-C?c ?nh EDA v? di?n gi?i ?? c? ? [ch??ng 03 ? Chia t?p v? ph?n t?ch EDA](03_data_splitting_and_eda.md). Ch??ng n?y kh?ng t?o ?nh m?i ho?c tr?n th?ng k? to?n CSV v?o c?c nh?n x?t ghi l? train-only. Ph?n b? ho?c correlation kh?ng ?? ch?ng minh nh?n qu?, v? histogram residual kh?ng ph?i b?ng ch?ng duy nh?t ?? k?t lu?n ph?n ph?i chu?n.
+Các ảnh EDA và diễn giải đã có ở [chương 03 — Chia tập và phân tích EDA](03_data_splitting_and_eda.md). Chương này không tạo ảnh mới hoặc trộn thống kê toàn CSV vào các nhận xét ghi là train-only. Phân bố hoặc correlation không đủ chứng minh nhân quả, và histogram residual không phải bằng chứng duy nhất để kết luận phân phối chuẩn.
 
-## 6. ?i?u ki?n d?ng v? b?n giao
+## 6. Điều kiện dừng và bàn giao
 
-D?ng x? l? n?u file thi?u/h?ng, schema kh?ng ??ng, target kh?ng h?u h?n ho?c ki?u c?t kh?ng h?p l?. Tr??c fit preprocessing ph?i d?ng n?u c? c?t train ho?n to?n missing. C?c tr??ng h?p n?y c?n x?c ??nh nguy?n nh?n, kh?ng ?m th?m thay file ho?c ?i?n gi? tr? ?? v??t validation.
+Dừng xử lý nếu file thiếu/hỏng, schema không đúng, target không hữu hạn hoặc kiểu cột không hợp lý. Trước fit preprocessing phải dừng nếu có cột train hoàn toàn missing. Các trường hợp này cần xác định nguyên nhân, không âm thầm thay file hoặc điền giá trị để vượt validation.
 
-Missing feature r?i r?c, nh?m hi?m v? target capping l? nh?ng h?n ch? ?? nh?n di?n, kh?ng t? ??ng l? l? do lo?i d?ng. B?n giao DataFrame th? nguy?n s? d?ng v? t?n target ?? [chia t?p ? ch??ng 03](03_data_splitting_and_eda.md), c?ng danh s?ch l?u ? cho preprocessing/??nh gi?.
+Missing feature rời rạc, nhóm hiếm và target capping là những hạn chế đã nhận diện, không tự động là lý do loại dòng. Bàn giao DataFrame thô nguyên số dòng và tên target để [chia tập ở chương 03](03_data_splitting_and_eda.md), cùng danh sách lưu ý cho preprocessing/đánh giá.
 
-## 7. Ph?n t?ch k?t qu? ??t ???c theo 5W1H
+## 7. Phân tích kết quả đạt được theo 5W1H
 
-| Th?nh ph?n | K?t qu? c? b?ng ch?ng |
+| Thành phần | Kết quả có bằng chứng |
 | --- | --- |
-| **What** | Loader ??c th?nh c?ng 20.640 d?ng; x?c nh?n 207 missing feature, 0 duplicate ??y ??, 0 numeric Inf, 965 nh?n t?i 500.001 v? 5 m?u ISLAND. |
-| **Why** | Missing d?n t?i imputation train-only; capped target v? nh?m hi?m gi?i h?n c?ch di?n gi?i metrics. |
-| **Who** | Ng??i chu?n b? d? li?u gi? raw CSV v? contract; ng??i ??nh gi? c?n b?o ri?ng ph?m vi/nh?m khi nh?n x?t ch?t l??ng. |
-| **When** | Audit tr?c ti?p ng?y 24/11/2026, tr??c m?i thay ??i d? li?u trong nhi?m v? t?i li?u n?y. |
-| **Where** | `data/raw/housing.csv`, `src/data/loader.py`; c?c h?nh vi ki?m th? ???c m? t? t?i `tests/test_data.py`. |
-| **How** | Ch?y loader/helper, ??m missing/duplicates/category/max, ki?m infinity v? hash b?ng Python; kh?ng ch?y l?i training ho?c to?n test suite. |
+| **What** | Loader đọc thành công 20.640 dòng; xác nhận 207 missing feature, 0 duplicate đầy đủ, 0 numeric Inf, 965 nhãn tại 500.001 và 5 mẫu ISLAND. |
+| **Why** | Missing dẫn tới imputation train-only; capped target và nhóm hiếm giới hạn cách diễn giải metrics. |
+| **Who** | Người chuẩn bị dữ liệu giữ raw CSV và contract; người đánh giá cần báo riêng phạm vi/nhóm khi nhận xét chất lượng. |
+| **When** | Audit trực tiếp ngày 24/11/2026, trước mọi thay đổi dữ liệu trong nhiệm vụ tài liệu này. |
+| **Where** | `data/raw/housing.csv`, `src/data/loader.py`; các hành vi kiểm thử được mô tả tại `tests/test_data.py`. |
+| **How** | Chạy loader/helper, đếm missing/duplicates/category/max, kiểm infinity và hash bằng Python; không chạy lại training hoặc toàn test suite. |
 
-**K?t lu?n:** ??t m?c ti?u ki?m tra h?p l? v? th?ng k? ch?t l??ng b?n CSV hi?n t?i. Ch?a ch?ng minh t?nh ??ng c?a nh?n ngo?i th?c t?, c? ch? missing, t?nh ??i di?n ho?c ngu?n g?c thu th?p. B?n giao d? li?u th? h?p l? cho split v? c?c gi?i h?n cho c?c ch??ng ti?p theo.
+**Kết luận:** Đạt mục tiêu kiểm tra hợp lệ và thống kê chất lượng bản CSV hiện tại. Chưa chứng minh tính đúng của nhãn ngoài thực tế, cơ chế missing, tính đại diện hoặc nguồn gốc thu thập. Bàn giao dữ liệu thô hợp lệ cho split và các giới hạn cho các chương tiếp theo.
 
-### Checklist nghi?m thu
+### Checklist nghiệm thu
 
-- [x] File/schema/target ???c loader x?c nh?n.
-- [x] Audit c? ng?y, ph?m vi v? hash; t? l? d?ng m?u s? r? r?ng.
-- [x] Kh?ng s?a raw CSV, t? lo?i outlier ho?c ?i?n target.
-- [x] Ph?n bi?t audit to?n b? v?i EDA/fit ch? tr?n train.
-- [x] Ghi r? ki?m tra mi?n/domain v? provenance ch?a ??y ??.
+- [x] File/schema/target được loader xác nhận.
+- [x] Audit có ngày, phạm vi và hash; tỷ lệ dùng mẫu số rõ ràng.
+- [x] Không sửa raw CSV, tự loại outlier hoặc điền target.
+- [x] Phân biệt audit toàn bộ với EDA/fit chỉ trên train.
+- [x] Ghi rõ kiểm tra miền/domain và provenance chưa đầy đủ.
 
-Ngu?n implementation: [loader.py](../../src/data/loader.py), [preprocessing.py](../../src/data/preprocessing.py), [test_data.py](../../tests/test_data.py). C?c li?n k?t test l? ngu?n tham kh?o h?nh vi, kh?ng ph?i tuy?n b? tests v?a ???c ch?y.
+Nguồn implementation: [loader.py](../../src/data/loader.py), [preprocessing.py](../../src/data/preprocessing.py), [test_data.py](../../tests/test_data.py). Các liên kết test là nguồn tham khảo hành vi, không phải tuyên bố tests vừa được chạy.
 
-[Ti?p: Chia t?p v? EDA](03_data_splitting_and_eda.md) ? [M?c l?c](README.md)
+[Tiếp: Chia tập và EDA](03_data_splitting_and_eda.md) • [Mục lục](README.md)

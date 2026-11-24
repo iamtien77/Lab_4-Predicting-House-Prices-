@@ -25,7 +25,7 @@ Run tham chiếu chung: **20261116T113320345877Z_6c8931e5**, ngày 16/11/2026, s
 
 Ngày 24/11/2026 đã đọc ảnh, kiểm tra CSV, xác minh 25 artifact hashes và reload model để đối chiếu metrics/sample predictions. Raw CSV khớp fingerprint. **Chỉ 10/18 source hashes hiện tại khớp run cũ**; không khẳng định training lại source hiện tại tái tạo toàn bộ kết quả. Chi tiết ở [chương 09](09_execution_and_validation.md).
 
-Nguồn dataset do người dùng cung cấp: [California Housing Prices — Kaggle](https://www.kaggle.com/datasets/camnugent/california-housing-prices). Những metadata chưa xác minh được ghi rõ trong chương 00.
+Nguồn dataset: Dữ liệu Tổng điều tra Dân số Hoa Kỳ 1990 (1990 U.S. Census), công bố học thuật gốc bởi Pace & Barry (1997) trong bài báo *"Sparse Spatial Autoregressions"*, được Aurélien Géron làm sạch và chia sẻ lại trên Kaggle [California Housing Prices — Kaggle / camnugent](https://www.kaggle.com/datasets/camnugent/california-housing-prices). Chi tiết xuất xứ học thuật và ý nghĩa từng đặc trưng được trình bày đầy đủ tại [chương 00](00_data_overview.md).
 
 - Mỗi chương có mục tiêu, quy trình, kết quả 5W1H, giới hạn và bàn giao.
 - Giá được báo theo USD; MSE có đơn vị USD², R² không đơn vị.
