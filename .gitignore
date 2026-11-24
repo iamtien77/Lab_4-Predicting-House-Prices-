@@ -77,6 +77,7 @@ docs/*
 !docs/algorithims/
 !docs/Practice exercise 4.pdf
 !docs/reports
+!docs/description
 
 # Testing temporary files & cache
 .pytest_cache/
